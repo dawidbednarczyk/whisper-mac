@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper STT — Overview</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="main">
+    <!-- Hero Section -->
+    <h1>Whisper Speech-to-Text</h1>
+    <p class="subtitle">System-wide speech-to-text on macOS using local Whisper AI. Record with hotkeys or mouse buttons, transcribe locally, paste anywhere.</p>
+
+    <!-- Two-Mode Overview -->
+    <div class="feature-grid">
+        <div class="card">
+            <div class="icon">🎤</div>
+            <h3>Batch Mode <span class="badge batch">Keyboard</span></h3>
+            <p>Press <kbd>Ctrl+Cmd+W</kbd> to record, <kbd>Ctrl+Cmd+Q</kbd> to stop. Audio is transcribed by whisper-cli (medium.en model) and pasted into any app. Best for long dictation.</p>
+        </div>
+        <div class="card">
+            <div class="icon">⚡</div>
+            <h3>Live Streaming <span class="badge streaming">Mouse</span></h3>
+            <p>Press mouse forward button to start. Words appear on screen in real-time via whisper-stream (base.en model). Copilot auto-corrects grammar. The star feature. <a href="streaming.html">Learn more →</a></p>
+        </div>
+    </div>
+
+    <!-- Key Highlights -->
+    <div class="card">
+        <h3>Key Highlights</h3>
+        <ul>
+            <li>✅ <strong>100% local transcription</strong> (no cloud, privacy-first)</li>
+            <li>✅ <strong>Works in ANY app</strong> — browser, terminal, IDE, email</li>
+            <li>✅ <strong>Self-healing microphone detection</strong> (auto-corrects when USB devices reconnect)</li>
+            <li>✅ <strong>Real-time streaming</strong> with live overlay and AI grammar correction</li>
+            <li>✅ <strong>Audio archiving</strong> — all recordings (batch + streaming) saved as WAV for re-transcription</li>
+            <li>✅ <strong>Apple M4 Pro optimized</strong> (~55ms per streaming step)</li>
+        </ul>
+    </div>
+
+    <!-- Quick Start -->
+    <h2>Quick Start</h2>
+    <ol class="steps">
+        <li>Install prerequisites → <a href="installation.html">Installation Guide</a></li>
+        <li>Clone the repos and download models → <a href="installation.html">Installation Guide</a></li>
+        <li>Configure Hammerspoon and mouse buttons → <a href="controls.html">Controls & Shortcuts</a></li>
+        <li>Press <kbd>Ctrl+Cmd+W</kbd> to record, <kbd>Ctrl+Cmd+Q</kbd> to transcribe (batch mode)</li>
+        <li>Press mouse <strong>Forward</strong> button for live streaming → <a href="streaming.html">Live Streaming</a></li>
+    </ol>
+
+    <!-- Project Structure -->
+    <h2>Project Structure</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Location</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Careless-Whisper/</code></td>
+                <td><code>~/Documents/claude_projects/whisper/upstream/Careless-Whisper/</code></td>
+                <td>Batch mode scripts, menubar UI, config</td>
+            </tr>
+            <tr>
+                <td><code>.hammerspoon/</code></td>
+                <td><code>~/.hammerspoon/</code></td>
+                <td>Streaming engine, overlay, mouse bindings</td>
+            </tr>
+            <tr>
+                <td><code>whisper-models/</code></td>
+                <td><code>~/whisper-models/</code></td>
+                <td>AI models (base.en + medium.en)</td>
+            </tr>
+            <tr>
+                <td><code>whisper docs</code></td>
+                <td><code>~/Documents/claude_projects/whisper/</code></td>
+                <td>This documentation site</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Pages in This Documentation -->
+    <h2>Pages in This Documentation</h2>
+    <ul>
+        <li>⭐ <a href="streaming.html"><strong>Live Streaming</strong></a> — The headline feature: real-time transcription with visual overlay and AI correction</li>
+        <li>📦 <a href="installation.html"><strong>Installation Guide</strong></a> — Step-by-step setup from scratch</li>
+        <li>🏗️ <a href="architecture.html"><strong>Architecture</strong></a> — System design, data flows, component details</li>
+        <li>⌨️ <a href="controls.html"><strong>Controls & Shortcuts</strong></a> — Mouse, keyboard, and menubar reference</li>
+        <li>🔧 <a href="troubleshooting.html"><strong>Troubleshooting</strong></a> — Debug commands, common issues, pitfalls</li>
+    </ul>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

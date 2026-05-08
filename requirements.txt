@@ -1,0 +1,9 @@
+# requirements.txt — Python deps for whisper_setup
+#
+# bin/transcription_log.py and bin/transcription_worker.py use only the Python stdlib.
+# bin/extract_project_from_screenshot.py uses Pillow for image processing.
+#
+# Install on a fresh Mac with: pip3 install -r requirements.txt
+# (or pip3 install --user -r requirements.txt if you don't want to touch system Python)
+
+Pillow>=10.0

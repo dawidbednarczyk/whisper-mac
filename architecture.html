@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper STT — Architecture</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="main">
+    <h1>Architecture</h1>
+    <p class="subtitle">System design, data flows, and component breakdown for both batch and streaming modes.</p>
+
+    <h2>System Overview</h2>
+    <p>The system has two independent transcription pipelines sharing a common Hammerspoon framework:</p>
+    <ul>
+        <li><strong>Batch mode</strong>: keyboard-triggered, high-accuracy, process-and-paste</li>
+        <li><strong>Streaming mode</strong>: mouse-triggered, real-time, live overlay with corrections</li>
+    </ul>
+
+    <h2>Batch Mode Flow</h2>
+    <div class="diagram">
+┌─────────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ Hammerspoon Hotkey  │ ──► │  whisper.sh       │ ──► │ Clipboard       │
+│ Ctrl+Cmd+W (start)  │     │  - ffmpeg record  │     │ (auto-paste)    │
+│ Ctrl+Cmd+Q (stop)   │     │  - whisper-cli    │     │                 │
+└─────────────────────┘     └──────────────────┘     └─────────────────┘
+    </div>
+    <p>The batch mode flow operates as follows:</p>
+    <ol>
+        <li>User presses <kbd>Ctrl+Cmd+W</kbd> → Hammerspoon starts ffmpeg recording (fast-start from Lua, no shell overhead)</li>
+        <li>Menubar updates to ● with running timer showing recording duration</li>
+        <li>User presses <kbd>Ctrl+Cmd+Q</kbd> → Hammerspoon stops ffmpeg, launches whisper.sh</li>
+        <li>whisper.sh runs whisper-cli with medium.en model on the recorded WAV file</li>
+        <li>Applies transcription_corrections.tsv substitutions (longest match first) to fix common errors</li>
+        <li>Copies result to clipboard and simulates <kbd>Cmd+V</kbd> paste into active application</li>
+        <li>Self-healing mic check runs: verifies device is still correct, auto-corrects if needed</li>
+    </ol>
+
+    <h2>Streaming Mode Flow</h2>
+    <div class="diagram">
+┌──────────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│ MX Anywhere 3S       │ ──► │ whisper-stream    │ ──► │ Live Overlay    │
+│ Forward btn (start)  │     │ - SDL2 audio      │     │ (hs.webview)    │
+│ Back btn (stop+paste)│     │ - base.en model   │     │ + Copilot fix   │
+└──────────────────────┘     │ - 500ms updates   │     │ + auto-paste    │
+                             └──────────────────┘     └─────────────────┘
+    </div>
+    <p>The streaming mode flow operates as follows:</p>
+    <ol>
+        <li>Mouse forward button → Logi Options+ remaps → <kbd>Ctrl+Shift+Cmd+9</kbd> → Hammerspoon catches it</li>
+        <li>whisper_streaming.lua launches whisper-stream as background process</li>
+        <li>whisper_overlay.lua creates dark overlay panel at bottom of screen</li>
+        <li>whisper-stream outputs ANSI-encoded text every 500ms with incremental updates</li>
+        <li>Streaming engine parses ANSI codes: <code>\033[2K\r</code> = partial, <code>\n</code> = confirmed</li>
+        <li>Hallucination filter discards phantom text patterns (e.g., "Thank you for watching")</li>
+        <li>Confirmed text displayed in white, partial in gray with blinking cursor</li>
+        <li>On sentence boundary → Copilot API corrects grammar → green flash animation</li>
+        <li>Mouse back button → stop whisper-stream → copy accumulated text → paste into active application</li>
+    </ol>
+
+    <h2>Component Table</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>File</th>
+                <th>Lines</th>
+                <th>Technology</th>
+                <th>Role</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Batch Script</td>
+                <td>whisper.sh</td>
+                <td>~1078</td>
+                <td>Bash</td>
+                <td>Recording, transcription, corrections, clipboard</td>
+            </tr>
+            <tr>
+                <td>Menubar UI</td>
+                <td>whisper_hotkeys.lua</td>
+                <td>~609</td>
+                <td>Lua/Hammerspoon</td>
+                <td>Menubar, hotkeys, indicators, model mgmt</td>
+            </tr>
+            <tr>
+                <td>Config</td>
+                <td>whisper-stt.conf</td>
+                <td>~20</td>
+                <td>Shell vars</td>
+                <td>Audio device, language, model path</td>
+            </tr>
+            <tr>
+                <td>Streaming Engine</td>
+                <td>whisper_streaming.lua</td>
+                <td>~371</td>
+                <td>Lua/Hammerspoon</td>
+                <td>Process mgmt, ANSI parsing, hallucination filter, Copilot API</td>
+            </tr>
+            <tr>
+                <td>Overlay</td>
+                <td>whisper_overlay.lua</td>
+                <td>~245</td>
+                <td>Lua/Hammerspoon + WebKit</td>
+                <td>Floating panel, text rendering, animations</td>
+            </tr>
+            <tr>
+                <td>Mouse Bindings</td>
+                <td>whisper_mouse.lua</td>
+                <td>~29</td>
+                <td>Lua/Hammerspoon</td>
+                <td>Forward=start, Back=stop streaming</td>
+            </tr>
+            <tr>
+                <td>Main Config</td>
+                <td>init.lua</td>
+                <td>~292</td>
+                <td>Lua/Hammerspoon</td>
+                <td>Fast-start, mic self-healing, module loading</td>
+            </tr>
+            <tr>
+                <td>Corrections</td>
+                <td>transcription_corrections.tsv</td>
+                <td>varies</td>
+                <td>TSV</td>
+                <td>Word substitution rules for batch mode</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Self-Healing Microphone</h2>
+    <p>The system includes automatic microphone device management to handle USB reconnections and device changes:</p>
+    <ul>
+        <li>After every batch transcription, <code>whisperCheckMicrophone()</code> in init.lua runs</li>
+        <li>It scans AVFoundation devices using <code>ffmpeg -f avfoundation -list_devices true</code></li>
+        <li>Pattern-based discovery with priority order:
+            <ol>
+                <li>Usb Audio Device (preferred)</li>
+                <li>Sennheiser MB Pro 1</li>
+                <li>MacBook Pro Microphone (fallback)</li>
+            </ol>
+        </li>
+        <li>If the device index changed (e.g., USB reconnect), it auto-updates whisper-stt.conf</li>
+        <li>Also runs a device watcher that triggers on USB connect/disconnect events</li>
+    </ul>
+
+    <h2>Models</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Model</th>
+                <th>File</th>
+                <th>Size</th>
+                <th>Use</th>
+                <th>Speed (M4 Pro)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>base.en</td>
+                <td>ggml-base.en.bin</td>
+                <td>141 MB</td>
+                <td>Streaming</td>
+                <td>~55ms per step</td>
+            </tr>
+            <tr>
+                <td>medium.en</td>
+                <td>ggml-medium.en.bin</td>
+                <td>1.5 GB</td>
+                <td>Batch</td>
+                <td>~2-4s per recording</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Dependencies</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Dependency</th>
+                <th>Install</th>
+                <th>Version</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>whisper-cpp</td>
+                <td>brew install whisper-cpp</td>
+                <td>Latest</td>
+                <td>whisper-cli, whisper-stream binaries</td>
+            </tr>
+            <tr>
+                <td>ffmpeg</td>
+                <td>brew install ffmpeg</td>
+                <td>Latest</td>
+                <td>Audio recording for batch mode</td>
+            </tr>
+            <tr>
+                <td>Hammerspoon</td>
+                <td>brew install --cask hammerspoon</td>
+                <td>Latest</td>
+                <td>Hotkeys, menubar, overlay, scripting</td>
+            </tr>
+            <tr>
+                <td>Logi Options+</td>
+                <td>logitech.com</td>
+                <td>Latest</td>
+                <td>Mouse button remapping</td>
+            </tr>
+            <tr>
+                <td>SDL2</td>
+                <td>(bundled with whisper-cpp)</td>
+                <td>—</td>
+                <td>Audio capture for streaming</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

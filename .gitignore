@@ -1,0 +1,36 @@
+# Audio & generated artifacts
+*.wav
+*.mp3
+*.m4a
+
+# Images / screenshots
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Whisper runtime state
+.whisper_log/
+whisper-stt.conf
+history.txt
+models/
+*.bin
+*.snapshot.*.json
+
+# Temp / OS
+/tmp/whisper_*
+.DS_Store
+__pycache__/
+*.py[cod]
+*.bak
+*.bak.*
+
+# Editor / agent artifacts
+.claude_task
+.cursor/
+.vscode/
+.idea/
+
+# Local secrets
+.env
+*.local

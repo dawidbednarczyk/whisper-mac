@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper STT — Controls &amp; Shortcuts</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="main">
+    <h1>Controls &amp; Shortcuts</h1>
+    <p class="subtitle">Mouse buttons, keyboard shortcuts, and menubar reference for both modes.</p>
+
+    <h2>Mouse Controls</h2>
+    <div class="info-box">
+        <strong>Note:</strong> Requires Logi Options+ to remap MX Anywhere 3S side buttons to keyboard shortcuts. The side buttons don't generate standard macOS CGEvents — Hammerspoon cannot detect them directly.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Button</th>
+                <th>Remapped To</th>
+                <th>Action</th>
+                <th>Mode</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Forward (top side button)</td>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>9</kbd></td>
+                <td>Start streaming — overlay appears, words flow in real-time</td>
+                <td>Streaming</td>
+            </tr>
+            <tr>
+                <td>Back (bottom side button)</td>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>0</kbd></td>
+                <td>Stop streaming — text copied to clipboard and pasted</td>
+                <td>Streaming</td>
+            </tr>
+            <tr>
+                <td>Middle (below scroll wheel)</td>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>8</kbd></td>
+                <td>Re-transcribe last recording — grabs latest WAV from archive, re-processes with medium.en model, pastes result</td>
+                <td>Both</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Keyboard Shortcuts</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Shortcut</th>
+                <th>Action</th>
+                <th>Mode</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>W</kbd></td>
+                <td>Start recording</td>
+                <td>Batch</td>
+            </tr>
+            <tr>
+                <td><kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>Q</kbd></td>
+                <td>Stop recording → transcribe → auto-paste</td>
+                <td>Batch</td>
+            </tr>
+            <tr>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>R</kbd></td>
+                <td>Re-transcribe last recording (keyboard shortcut)</td>
+                <td>Both</td>
+            </tr>
+            <tr>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>8</kbd></td>
+                <td>Re-transcribe last recording (same as mouse Middle)</td>
+                <td>Both</td>
+            </tr>
+            <tr>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>9</kbd></td>
+                <td>Start streaming (same as mouse Forward)</td>
+                <td>Streaming</td>
+            </tr>
+            <tr>
+                <td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>0</kbd></td>
+                <td>Stop streaming + paste (same as mouse Back)</td>
+                <td>Streaming</td>
+            </tr>
+            <tr>
+                <td><kbd>Cmd</kbd>+<kbd>L</kbd></td>
+                <td>Lock screen</td>
+                <td>System</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Menubar</h2>
+    <p>The menubar icon displays the current system state:</p>
+    <ul>
+        <li><strong>○</strong> = idle, ready</li>
+        <li><strong>● 0:05</strong> = batch recording in progress (with running timer)</li>
+        <li><strong>◉ 0:05</strong> = streaming in progress (with running timer)</li>
+    </ul>
+
+    <p>Menubar menu items:</p>
+    <ul>
+        <li><strong>Toggle Recording / Stop Recording</strong> — starts or stops batch mode</li>
+        <li><strong>Re-transcribe Last</strong> — re-processes the last audio recording</li>
+        <li><strong>◉ Start Streaming / ⏹ Stop Streaming</strong> — streaming mode controls</li>
+        <li><strong>Model selection submenu</strong> — choose between available whisper models</li>
+        <li><strong>Post-processing mode</strong> — toggle correction features</li>
+        <li><strong>Notifications toggle</strong> — enable/disable macOS notifications</li>
+        <li><strong>Sounds toggle</strong> — enable/disable sound effects</li>
+    </ul>
+
+    <h2>Logi Options+ Setup</h2>
+    <ol class="steps">
+        <li>Download and install Logi Options+ from logitech.com</li>
+        <li>Open Logi Options+ → your MX Anywhere 3S should appear</li>
+        <li>Click on the mouse image to see button assignments</li>
+        <li>Click on the Forward button (top side button)</li>
+        <li>Choose "Keyboard shortcut" as the action type</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>9</kbd> in the shortcut field</li>
+        <li>Save</li>
+        <li>Click on the Back button (bottom side button)</li>
+        <li>Choose "Keyboard shortcut" as the action type</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>0</kbd> in the shortcut field</li>
+        <li>Save</li>
+        <li>Test: press Forward button — Hammerspoon menubar should change to ◉ and overlay should appear</li>
+        <li>Click on the <strong>Middle button</strong> (below the scroll wheel)</li>
+        <li>Choose "Keyboard shortcut" as the action type</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>8</kbd> in the shortcut field</li>
+        <li>Save</li>
+        <li>Test: record something with Forward/Back, then press Middle button — it should re-transcribe and paste the result</li>
+    </ol>
+
+    <div class="warning-box">
+        <strong>Warning:</strong> Without Logi Options+, the mouse side buttons simply won't work for streaming. You can still use the keyboard shortcuts <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>9</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Cmd</kbd>+<kbd>0</kbd> as alternatives.
+    </div>
+
+    <h2>User Experience — Batch Mode</h2>
+    <ol class="steps">
+        <li>You're typing in any app (VS Code, browser, terminal, email...)</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>W</kbd> — menubar changes from ○ to ● 0:00</li>
+        <li>Speak your text naturally — timer counts up in menubar</li>
+        <li>Press <kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>Q</kbd> — menubar shows processing indicator</li>
+        <li>After 2-4 seconds, transcribed text appears at your cursor position</li>
+        <li>Menubar returns to ○</li>
+    </ol>
+
+    <h2>User Experience — Streaming Mode</h2>
+    <ol class="steps">
+        <li>You're in any app where you want to type by voice</li>
+        <li>Press mouse Forward button — dark overlay appears at screen bottom, red ● STREAMING badge</li>
+        <li>Speak — words appear on overlay in real-time (gray = partial, white = confirmed)</li>
+        <li>Completed sentences get auto-corrected by Copilot (green flash)</li>
+        <li>Continue speaking as long as you want — text accumulates</li>
+        <li>Press mouse Back button — overlay disappears, all text is pasted at cursor</li>
+        <li>Audio is automatically saved to <code>recordings/</code> as a WAV file</li>
+        <li>Menubar returns to ○</li>
+    </ol>
+
+    <h2>Re-transcribe</h2>
+    <p>If the streaming result wasn't accurate enough, press the <strong>Middle mouse button</strong> (or <kbd>Ctrl+Shift+Cmd+R</kbd>) to re-transcribe the last recording. This uses the larger <code>medium.en</code> model (1.5GB) for higher accuracy — it takes a few seconds but usually produces better results.</p>
+    <p>Re-transcribe works for the most recent recording from <strong>either</strong> batch or streaming mode — whichever was last.</p>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

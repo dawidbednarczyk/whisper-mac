@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper STT — Live Streaming</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="main">
+    <h1>⭐ Live Streaming Mode</h1>
+    <p class="subtitle">Real-time speech-to-text with visual overlay and AI grammar correction — the star feature of this project.</p>
+
+    <h2>How It Works</h2>
+    <p>Press the mouse Forward button (or Ctrl+Shift+Cmd+9) to start streaming. The <code>whisper-stream</code> binary begins capturing audio via SDL2 from your USB microphone. Every 500ms, partial transcriptions appear on a dark overlay at the bottom of your screen.</p>
+    
+    <p>When a complete sentence is detected (period, question mark, exclamation), it's sent to GitHub Copilot for grammar and spelling correction. The corrected text flashes green briefly, then fades to white.</p>
+    
+    <p>Press the mouse Back button (or Ctrl+Shift+Cmd+0) to stop — any remaining gray (partial) text is automatically promoted to white (confirmed), the overlay briefly shows the final result, then the text is copied to clipboard and pasted into the active app. The audio is also saved as a WAV file for later re-transcription if needed.</p>
+
+    <h2>The Overlay</h2>
+    <p>A dark semi-transparent panel appears fixed at the bottom of your screen (80% width, 120px height). Visual elements include:</p>
+    <ul>
+        <li><strong>White text</strong> — confirmed transcription (final words)</li>
+        <li><strong>Gray text</strong> with blinking ▌ cursor — partial transcription (still evolving)</li>
+        <li><strong>Green flash</strong> — text just corrected by Copilot (fades to white over 2 seconds)</li>
+        <li><strong>Red ● STREAMING badge</strong> — top-right corner indicator</li>
+    </ul>
+    <p>Built with <code>hs.webview</code> (Hammerspoon's native WebKit panel).</p>
+
+    <h2>Technical Details</h2>
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>Binary</td>
+            <td>/opt/homebrew/bin/whisper-stream</td>
+        </tr>
+        <tr>
+            <td>Model</td>
+            <td>ggml-base.en.bin (141MB)</td>
+        </tr>
+        <tr>
+            <td>Performance</td>
+            <td>~55ms encode per step on Apple M4 Pro</td>
+        </tr>
+        <tr>
+            <td>Audio capture</td>
+            <td>SDL2 device #1 "Usb Audio Device"</td>
+        </tr>
+        <tr>
+            <td>Update interval</td>
+            <td>--step 500 (500ms)</td>
+        </tr>
+        <tr>
+            <td>Context window</td>
+            <td>--length 5000 (5 seconds)</td>
+        </tr>
+        <tr>
+            <td>Keep context</td>
+            <td>--keep 200 tokens</td>
+        </tr>
+        <tr>
+            <td>Audio saving</td>
+            <td>--save-audio (-sa) → WAV in recordings/</td>
+        </tr>
+        <tr>
+            <td>Other flags</td>
+            <td>-kc -nf -fa -sa</td>
+        </tr>
+        <tr>
+            <td>Full command</td>
+            <td>whisper-stream -m ~/whisper-models/ggml-base.en.bin --step 500 --length 5000 --keep 200 -kc -nf -fa -sa -c 1</td>
+        </tr>
+    </table>
+
+    <h2>Hallucination Filtering</h2>
+    <p>Whisper generates phantom text during silence — common patterns like <code>[BLANK_AUDIO]</code>, <code>(upbeat music)</code>, <code>Thank you.</code>, <code>Thanks for watching.</code>, <code>Bye.</code>, <code>Bye bye.</code>, <code>(soft music)</code>, <code>[MUSIC]</code>, <code>[silence]</code>, <code>(gentle music)</code>, <code>Thank you for watching.</code>, <code>Cheers.</code>, <code>[Music]</code>, <code>you</code>.</p>
+    
+    <p>These are detected by pattern matching in <code>whisper_streaming.lua</code> and silently discarded. Only real speech reaches the overlay. The filter uses both exact matches and pattern-based detection (brackets, parentheses).</p>
+
+    <h2>Copilot Grammar Correction</h2>
+    <p><strong>Trigger:</strong> sentence boundary detected (., ?, !)</p>
+    <p><strong>Endpoint:</strong> <code>POST https://api.githubcopilot.com/chat/completions</code></p>
+    <p><strong>Auth:</strong> Bearer token from <code>~/.config/careless-whisper/auth.json</code> (ghu_* format)</p>
+    <p><strong>Required headers:</strong> Editor-Version (vscode/1.120.0), Editor-Plugin-Version (copilot-chat/0.35.0), Copilot-Integration-Id (vscode-chat)</p>
+    <p><strong>Prompt:</strong> lightweight "fix grammar/spelling, return only the corrected text" with temperature 0.1</p>
+    <p><strong>Model:</strong> claude-sonnet-4.6 (configurable in whisper_streaming.lua)</p>
+    <p>Uses <code>hs.http.asyncPost()</code> for native async HTTP (no process spawning). Graceful fallback: if no auth file exists, raw text is kept as-is.</p>
+
+    <h2>whisper-stream Output Format</h2>
+    <p>Uses ANSI escape codes: <code>\033[2K\r</code> for partial text overwrites, <code>\n</code> for confirmed text. The streaming engine in <code>whisper_streaming.lua</code> parses these codes to distinguish partial vs confirmed text.</p>
+    
+    <p>With <code>--step 500 --length 5000</code>, text is confirmed every ~4.5 seconds.</p>
+
+    <h2>Data Flow</h2>
+    <div class="diagram">
+<pre>
+Mouse Forward Button
+    │
+    ▼
+Logi Options+ remaps to Ctrl+Shift+Cmd+9
+    │
+    ▼
+Hammerspoon (whisper_mouse.lua) catches hotkey
+    │
+    ▼
+whisper_streaming.lua starts whisper-stream process
+    │
+    ▼
+whisper-stream captures audio via SDL2 ──► ANSI output + WAV file saved
+    │                                          │
+    ▼                                          ▼
+whisper_overlay.lua renders on screen    Parse partial vs confirmed
+    │                                          │
+    ▼                                          ▼
+Sentence detected? ──► YES ──► Copilot API correction
+    │                              │
+    NO                             ▼
+    │                   Green flash → fade to white
+    ▼
+Continue accumulating...
+    │
+    ▼ (Mouse Back Button / Ctrl+Shift+Cmd+0)
+Stop whisper-stream → show "⏳ Retranscribing..." → retranscribe with medium.en
+    │
+    ▼
+Apply TSV corrections → wrap with LLM metadata → paste improved result
+    │
+    ▼ (Mouse Middle Button / Ctrl+Shift+Cmd+R — manual, optional)
+Re-transcribe last WAV with medium.en model → paste improved result
+</pre>
+    </div>
+
+    <h2>Audio Archiving</h2>
+    <p>Streaming mode now saves audio to <code>~/Documents/claude_projects/whisper/upstream/Careless-Whisper/recordings/</code> as timestamped WAV files (e.g. <code>20260409153835.wav</code>). This uses whisper-stream's native <code>--save-audio</code> flag — the process working directory is set to the recordings folder so files land in the right place.</p>
+    
+    <p>Both batch mode and streaming mode save to the <strong>same</strong> <code>recordings/</code> directory. Streaming mode <strong>automatically retranscribes</strong> on stop using the larger <code>medium.en</code> model, applies dictionary corrections from <code>transcription_corrections.tsv</code>, and wraps the output with LLM-aware metadata. The manual re-transcribe (<kbd>Ctrl+Shift+Cmd+R</kbd> or middle mouse button) is still available for batch recordings or to re-run retranscription.</p>
+
+    <h2>Key Files</h2>
+    <table>
+        <tr>
+            <th>File</th>
+            <th>Location</th>
+            <th>Role</th>
+        </tr>
+        <tr>
+            <td>whisper_streaming.lua</td>
+            <td>~/.hammerspoon/</td>
+            <td>Streaming engine: process mgmt, ANSI parsing, hallucination filter, Copilot</td>
+        </tr>
+        <tr>
+            <td>whisper_overlay.lua</td>
+            <td>~/.hammerspoon/</td>
+            <td>Visual overlay: hs.webview panel, text rendering, animations</td>
+        </tr>
+        <tr>
+            <td>whisper_mouse.lua</td>
+            <td>~/.hammerspoon/</td>
+            <td>Mouse button bindings (forward=start, back=stop, middle=retranscribe)</td>
+        </tr>
+        <tr>
+            <td>init.lua</td>
+            <td>~/.hammerspoon/</td>
+            <td>Loads all modules, defines streaming hotkeys</td>
+        </tr>
+    </table>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

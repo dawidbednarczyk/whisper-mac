@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper STT — Troubleshooting</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="main">
+    <h1>Troubleshooting</h1>
+    <p class="subtitle">Debug commands, common issues, and pitfalls to avoid.</p>
+
+    <h2>Debug Commands</h2>
+    
+    <p><strong>Check Hammerspoon console:</strong></p>
+    <p>Open Hammerspoon → Console (Cmd+;) or check the log file at:</p>
+    <pre><code>~/Library/Logs/Hammerspoon/</code></pre>
+
+    <p><strong>List audio devices (AVFoundation):</strong></p>
+    <pre><code>ffmpeg -f avfoundation -list_devices true -i "" 2>&1 | grep -A 20 "audio devices"</code></pre>
+    <p>Use this to find the correct device ID for batch recording mode.</p>
+
+    <p><strong>List audio devices (SDL2):</strong></p>
+    <pre><code>whisper-stream -m ~/whisper-models/ggml-base.en.bin</code></pre>
+    <p>Run this and check the startup output for the SDL2 device list. Used for streaming mode.</p>
+
+    <p><strong>Test microphone recording:</strong></p>
+    <pre><code>ffmpeg -f avfoundation -i :3 -ar 16000 -ac 1 -t 5 /tmp/test.wav && afplay /tmp/test.wav</code></pre>
+    <p>Replace <code>:3</code> with your audio device ID. Records 5 seconds and plays it back.</p>
+
+    <p><strong>Test batch transcription:</strong></p>
+    <pre><code>whisper-cli -m ~/whisper-models/ggml-medium.en.bin -f /tmp/test.wav</code></pre>
+    <p>Transcribes the test recording. Verifies model loading and transcription pipeline.</p>
+
+    <p><strong>Test streaming:</strong></p>
+    <pre><code>whisper-stream -m ~/whisper-models/ggml-base.en.bin --step 500 --length 5000 --keep 200 -kc -nf -fa -c 1</code></pre>
+    <p>Starts streaming transcription in terminal. Press Ctrl+C to stop.</p>
+
+    <p><strong>Check if whisper-stream is running:</strong></p>
+    <pre><code>pgrep -f whisper-stream</code></pre>
+    <p>Returns process ID if running, empty if not.</p>
+
+    <p><strong>Kill stuck whisper-stream:</strong></p>
+    <pre><code>pkill -f whisper-stream</code></pre>
+    <p>Terminates all whisper-stream processes. Use if overlay becomes unresponsive.</p>
+
+    <p><strong>Reload Hammerspoon:</strong></p>
+    <pre><code>killall Hammerspoon; sleep 1; open -a Hammerspoon</code></pre>
+    <p>Clean restart after config changes. Never use <code>hs.reload()</code> or URL schemes.</p>
+
+    <p><strong>Check Hammerspoon version:</strong></p>
+    <pre><code>/Applications/Hammerspoon.app/Contents/Frameworks/hs/hs -c "hs.processInfo.version"</code></pre>
+    <p>Verifies Hammerspoon installation and version.</p>
+
+    <h2>Common Issues</h2>
+
+    <h3>No text appears after recording (batch mode)</h3>
+    <p><strong>Problem:</strong> You press the hotkey, record, but no text gets typed.</p>
+    <p><strong>Solutions:</strong></p>
+    <ul>
+        <li>Check if whisper-cli is installed: <code>which whisper-cli</code></li>
+        <li>Verify model path in <code>whisper-stt.conf</code> — the file must exist</li>
+        <li>Test recording manually with the ffmpeg command above</li>
+        <li>Check Hammerspoon console for error messages</li>
+        <li>Verify accessibility permissions: System Settings → Privacy & Security → Accessibility → Hammerspoon (enabled)</li>
+    </ul>
+
+    <h3>Overlay doesn't appear (streaming mode)</h3>
+    <p><strong>Problem:</strong> Pressing Ctrl+Shift+Cmd+9 does nothing.</p>
+    <p><strong>Solutions:</strong></p>
+    <ul>
+        <li>Check Hammerspoon console for hotkey registration confirmation</li>
+        <li>Verify Logi Options+ is remapping mouse button correctly</li>
+        <li>Ensure all required Lua modules are installed: <code>whisper_streaming.lua</code>, <code>whisper_overlay.lua</code>, <code>whisper_mouse.lua</code> in <code>~/.hammerspoon/</code></li>
+        <li>Check that <code>init.lua</code> loads all modules with <code>require()</code></li>
+        <li>Try triggering with keyboard shortcut directly to isolate mouse button issue</li>
+    </ul>
+
+    <h3>Mouse buttons don't trigger streaming</h3>
+    <p><strong>Problem:</strong> MX Anywhere 3S side buttons don't start/stop streaming.</p>
+    <p><strong>Root cause:</strong> MX Anywhere 3S side buttons don't send CGEvents — this is by design from Logitech.</p>
+    <p><strong>Solution:</strong></p>
+    <ul>
+        <li><strong>You MUST use Logi Options+</strong> to remap side buttons to keyboard shortcuts</li>
+        <li>Forward button → Ctrl+Shift+Cmd+9 (start streaming)</li>
+        <li>Back button → Ctrl+Shift+Cmd+0 (stop streaming)</li>
+        <li>Test with keyboard shortcut directly first to isolate the issue</li>
+        <li>Verify the remap is working by checking what shortcut fires in Hammerspoon console</li>
+    </ul>
+
+    <h3>Wrong microphone detected</h3>
+    <p><strong>Problem:</strong> System is transcribing from laptop mic instead of USB/Bluetooth mic.</p>
+    <p><strong>Solutions:</strong></p>
+    <ul>
+        <li>List devices: <code>ffmpeg -f avfoundation -list_devices true -i ""</code></li>
+        <li>The self-healing check should auto-correct, but you can manually edit <code>WHISPER_AUDIO_DEVICE</code> in <code>whisper-stt.conf</code></li>
+        <li><strong>Important:</strong> SDL2 device IDs (streaming mode) differ from AVFoundation device IDs (batch mode)</li>
+        <li>Your "AirPods Pro" might be ID 3 in AVFoundation but ID 1 in SDL2</li>
+    </ul>
+
+    <h3>Hallucination text appearing on overlay</h3>
+    <p><strong>Problem:</strong> Phantom text like "[BLANK_AUDIO]", "(upbeat music)", or "Thank you." appears during silence.</p>
+    <p><strong>Root cause:</strong> Whisper models generate hallucinations during silent or noisy input.</p>
+    <p><strong>Solution:</strong></p>
+    <ul>
+        <li>Check <code>whisper_streaming.lua</code> for the hallucination filter patterns</li>
+        <li>Common filtered patterns: <code>[BLANK_AUDIO]</code>, <code>(upbeat music)</code>, <code>Thank you.</code>, standalone <code>you</code></li>
+        <li>If new patterns appear repeatedly, add them to the filter in <code>whisper_streaming.lua</code></li>
+        <li>The filter is case-insensitive and runs on every transcription chunk</li>
+    </ul>
+
+    <h3>Copilot corrections not working</h3>
+    <p><strong>Problem:</strong> Streaming overlay shows raw text without grammar/punctuation fixes.</p>
+    <p><strong>Solutions:</strong></p>
+    <ul>
+        <li>Check if auth file exists: <code>cat ~/.config/careless-whisper/auth.json</code></li>
+        <li>Token format should be <code>ghu_*</code> (GitHub user token)</li>
+        <li>Use menubar → Sign In to Copilot to authenticate via OAuth</li>
+        <li>Without Copilot, streaming still works — raw text is displayed without correction</li>
+        <li>Check Hammerspoon console for API errors (rate limits, network issues)</li>
+    </ul>
+
+    <h3>F5 triggers macOS Dictation instead of Whisper</h3>
+    <p><strong>Problem:</strong> Pressing F5 starts Apple's built-in dictation, not Whisper.</p>
+    <p><strong>Solution:</strong></p>
+    <ul>
+        <li>Go to System Settings → Keyboard → Dictation</li>
+        <li>Change or disable the Dictation shortcut (default is F5 double-press)</li>
+        <li>Don't use F5 for Whisper hotkeys unless Apple Dictation is fully disabled</li>
+    </ul>
+
+    <h2>Common Pitfalls</h2>
+    <ol>
+        <li><strong>F5 conflicts with macOS Dictation</strong> — Don't use F5 unless Dictation is disabled in System Settings → Keyboard → Dictation.</li>
+        
+        <li><strong>Cmd+7/8/9 conflict</strong> — Many apps (browsers, terminals) use these for tab switching. That's why this setup uses Ctrl+Shift+Cmd+9/0 instead.</li>
+        
+        <li><strong>PATH not available in Hammerspoon</strong> — Hammerspoon doesn't inherit your shell PATH. Always use full paths: <code>/opt/homebrew/bin/ffmpeg</code>, <code>/opt/homebrew/bin/whisper-cli</code>, <code>/opt/homebrew/bin/whisper-stream</code>.</li>
+        
+        <li><strong>Background processes die</strong> — Use <code>nohup</code> and redirect output to persist processes after the launching script exits.</li>
+        
+        <li><strong>whisper-cli syntax</strong> — The file argument is positional (not a <code>-f</code> flag): <code>whisper-cli -m model.bin file.wav</code>, not <code>whisper-cli -m model.bin -f file.wav</code>.</li>
+        
+        <li><strong>Hammerspoon reload</strong> — Config changes don't auto-apply. Always use <code>killall Hammerspoon; sleep 1; open -a Hammerspoon</code>. Never use <code>hs.reload()</code> or URL schemes — they cause state corruption.</li>
+        
+        <li><strong>hs.execute vs hs.task</strong> — Use <code>hs.task.new()</code> for scripts with arguments or long-running processes, not <code>hs.execute()</code> which blocks the main thread.</li>
+        
+        <li><strong>MX Anywhere 3S CGEvents</strong> — Side buttons don't generate CGEvents that Hammerspoon can intercept. Logi Options+ remap to keyboard shortcuts is required.</li>
+        
+        <li><strong>SDL2 vs AVFoundation IDs</strong> — The same microphone has DIFFERENT IDs in each API. SDL2 device #1 may be AVFoundation device #3. Always check both separately.</li>
+        
+        <li><strong>Whisper hallucinations</strong> — The model generates phantom text during silence or noise. Always have filtering enabled in streaming mode.</li>
+        
+        <li><strong>nohup for background processes</strong> — Without <code>nohup</code>, processes launched from Hammerspoon scripts may terminate unexpectedly when the parent script ends.</li>
+    </ol>
+
+    <h2>Configuration Reference</h2>
+    <p>The main config file is <code>~/Documents/claude_projects/whisper/upstream/Careless-Whisper/whisper-stt.conf</code>. Key variables:</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Variable</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>WHISPER_AUDIO_DEVICE</code></td>
+                <td>3</td>
+                <td>AVFoundation device ID for batch recording</td>
+            </tr>
+            <tr>
+                <td><code>WHISPER_LANGUAGE</code></td>
+                <td>en</td>
+                <td>Language for transcription</td>
+            </tr>
+            <tr>
+                <td><code>WHISPER_MODEL</code></td>
+                <td>~/whisper-models/ggml-medium.en.bin</td>
+                <td>Model path for batch mode</td>
+            </tr>
+            <tr>
+                <td><code>WHISPER_CORRECTIONS</code></td>
+                <td>(in-repo TSV)</td>
+                <td>Path to transcription_corrections.tsv</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="info-box">
+        <strong>Note:</strong> Streaming mode uses its own settings hardcoded in <code>whisper_streaming.lua</code>: SDL2 device, base.en model, step/length/keep parameters. These can be changed by editing the Lua file directly.
+    </div>
+
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

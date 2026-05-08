@@ -1,0 +1,6 @@
+# transcription_corrections.tsv — wrong<TAB>right (UTF-8). Lines starting with # are ignored.
+# Add company names, product names, and recurring mis-hearings. Order does not matter (script sorts longest-first).
+# Example (adjust left column to match what whisper actually outputs on your mic):
+example misheard phrase	ExampleCorrectName
+Versium	resume
+Versium local project	resume local project

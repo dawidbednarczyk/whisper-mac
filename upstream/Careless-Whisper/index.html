@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Careless Whisper – Local STT for macOS</title>
+    <style>
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --border: #2a2d3a;
+        --accent: #7c6af7;
+        --accent2: #4fc3f7;
+        --green: #4caf82;
+        --red: #e06c75;
+        --text: #d4d8e8;
+        --muted: #6b7080;
+        --code-bg: #13151f;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 15px;
+        line-height: 1.7;
+        padding: 2rem 1rem;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+      }
+
+      header {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1.5rem;
+        margin-bottom: 2.5rem;
+      }
+      header h1 {
+        font-size: 1.8rem;
+        color: #fff;
+      }
+      header p {
+        color: var(--muted);
+        margin-top: 0.4rem;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+        color: var(--accent2);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid var(--border);
+      }
+      h3 {
+        font-size: 0.95rem;
+        color: var(--accent);
+        margin: 1.2rem 0 0.5rem;
+      }
+
+      pre,
+      code {
+        font-family: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+        font-size: 0.85rem;
+      }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.2rem;
+        overflow-x: auto;
+        margin: 0.8rem 0;
+      }
+      code {
+        background: var(--code-bg);
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.8rem 0;
+        font-size: 0.88rem;
+      }
+      th {
+        background: var(--surface);
+        color: var(--accent2);
+        font-weight: 600;
+        text-align: left;
+        padding: 0.55rem 0.8rem;
+        border-bottom: 2px solid var(--border);
+      }
+      td {
+        padding: 0.5rem 0.8rem;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td code {
+        font-size: 0.82rem;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.15em 0.55em;
+        border-radius: 4px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        font-family: monospace;
+      }
+      .badge-idle {
+        background: #2a2d3a;
+        color: #9ba3b8;
+      }
+      .badge-rec {
+        background: #3b1f1f;
+        color: var(--red);
+      }
+      .badge-busy {
+        background: #1f2c3b;
+        color: var(--accent2);
+      }
+
+      .flow {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.2rem 1.4rem;
+        font-family: monospace;
+        font-size: 0.83rem;
+        line-height: 2;
+        color: var(--muted);
+      }
+      .flow .hi {
+        color: var(--text);
+      }
+      .flow .acc {
+        color: var(--accent);
+      }
+      .flow .acc2 {
+        color: var(--accent2);
+      }
+
+      .warn-list {
+        list-style: none;
+        padding: 0;
+      }
+      .warn-list li {
+        background: var(--surface);
+        border-left: 3px solid var(--accent);
+        border-radius: 0 6px 6px 0;
+        padding: 0.55rem 0.9rem;
+        margin-bottom: 0.5rem;
+        font-size: 0.88rem;
+      }
+      .warn-list li strong {
+        color: var(--accent2);
+      }
+
+      .install-box {
+        background: var(--surface);
+        border: 2px solid var(--accent);
+        border-radius: 10px;
+        padding: 1.5rem 1.8rem;
+        margin: 1rem 0;
+      }
+      .install-box h3 {
+        color: var(--accent2);
+        margin-top: 0;
+        font-size: 1rem;
+      }
+      .install-box ol {
+        margin: 0.6rem 0 0 1.2rem;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .install-box ol li {
+        margin-bottom: 0.2rem;
+      }
+
+      a {
+        color: var(--accent2);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Careless Whisper</h1>
+        <p>
+          Local speech-to-text for macOS. Press a hotkey anywhere, speak, get
+          text pasted &mdash; no cloud, no subscription.
+        </p>
+      </header>
+
+      <!-- INSTALL -->
+      <h2>Quick Start</h2>
+      <div class="install-box">
+        <pre>
+git clone https://github.com/Bloodw0lf/Careless-Whisper.git ~/Scripts/Whisper
+cd ~/Scripts/Whisper
+./install.sh</pre
+        >
+        <h3>The installer handles everything:</h3>
+        <ol>
+          <li>
+            Installs <code>ffmpeg</code> + <code>whisper-cpp</code> via Homebrew
+          </li>
+          <li>Offers to install Hammerspoon</li>
+          <li>Downloads a whisper model (~800 MB)</li>
+          <li>Creates config &amp; wires up Hammerspoon</li>
+          <li>Launches Hammerspoon and reloads config</li>
+        </ol>
+      </div>
+      <p>
+        After install: press <code>Ctrl+Cmd+W</code> to start recording, press
+        again to transcribe and paste.
+      </p>
+
+      <!-- HOTKEYS -->
+      <h2>Hotkeys</h2>
+      <table>
+        <tr>
+          <th>Shortcut</th>
+          <th>Action</th>
+        </tr>
+        <tr>
+          <td><code>Ctrl+Cmd+W</code></td>
+          <td>
+            Toggle recording &mdash; first press starts, second press stops +
+            transcribes + pastes
+          </td>
+        </tr>
+        <tr>
+          <td><code>Ctrl+Cmd+Q</code></td>
+          <td>Emergency stop</td>
+        </tr>
+      </table>
+      <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted)">
+        Configurable in <code>whisper-stt.conf</code>. Reload Hammerspoon to
+        apply changes.
+      </p>
+
+      <!-- MENUBAR -->
+      <h2>Menubar</h2>
+      <table>
+        <tr>
+          <th>Symbol</th>
+          <th>State</th>
+        </tr>
+        <tr>
+          <td><span class="badge badge-idle">○</span></td>
+          <td>Idle</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-rec">● 0:12</span></td>
+          <td>Recording (with elapsed time)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-busy">⠋⠙⠹…</span></td>
+          <td>Transcribing</td>
+        </tr>
+      </table>
+      <h3>Dropdown Menu</h3>
+      <p>
+        Click the menubar icon for <strong>Toggle / Stop</strong> controls,
+        <strong>Notifications / Sounds</strong> toggles, a
+        <strong>model selector</strong> (switch between all
+        <code>.bin</code> files in <code>models/</code>), and a list of
+        <strong>recent transcriptions</strong> (click to copy).
+      </p>
+
+      <!-- MODELS -->
+      <h2>Models</h2>
+      <table>
+        <tr>
+          <th>Model</th>
+          <th>Size</th>
+          <th>Speed</th>
+          <th>Quality</th>
+          <th>Best for</th>
+        </tr>
+        <tr>
+          <td><code>ggml-large-v3-turbo</code></td>
+          <td>~800 MB</td>
+          <td>Fast</td>
+          <td>High</td>
+          <td><strong>Recommended</strong> &mdash; daily use</td>
+        </tr>
+        <tr>
+          <td><code>ggml-large-v3</code></td>
+          <td>~1.5 GB</td>
+          <td>Slow</td>
+          <td>Highest</td>
+          <td>Long recordings, noisy audio</td>
+        </tr>
+        <tr>
+          <td><code>ggml-medium</code></td>
+          <td>~1.5 GB</td>
+          <td>Med</td>
+          <td>Good</td>
+          <td>Balanced alternative</td>
+        </tr>
+      </table>
+      <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--muted)">
+        All models are multilingual with auto-detection. Switch via menubar
+        &mdash; no restart needed. More models at
+        <a href="https://huggingface.co/ggerganov/whisper.cpp">Hugging Face</a>.
+      </p>
+
+      <!-- ARCHITECTURE -->
+      <h2>Architecture</h2>
+      <div class="flow">
+        <span class="acc2">Ctrl+Cmd+W</span><br />
+        &nbsp;&nbsp;&nbsp;↓<br />
+        <span class="hi">Hammerspoon</span>
+        <span class="acc">(whisper_hotkeys.lua)</span><br />
+        &nbsp;&nbsp;&nbsp;↓ hs.task.new()<br />
+        <span class="hi">whisper.sh toggle</span><br />
+        &nbsp;&nbsp;&nbsp;├─ <span class="acc">[start]</span> ffmpeg records →
+        <code>$TMPDIR/whisper_recording.wav</code><br />
+        &nbsp;&nbsp;&nbsp;└─ <span class="acc">[stop]</span><br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ touch
+        <code>$TMPDIR/whisper_transcribing</code> &nbsp;<span class="acc2"
+          >← spinner</span
+        ><br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ whisper-cli
+        transcribes<br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ rm
+        <code>$TMPDIR/whisper_transcribing</code> &nbsp;<span class="acc2"
+          >← done</span
+        ><br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ append to
+        <code>history.txt</code><br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ copy to clipboard<br />
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ auto-paste via
+        AppleScript
+      </div>
+
+      <!-- CONFIG -->
+      <h2>Configuration (<code>whisper-stt.conf</code>)</h2>
+      <table>
+        <tr>
+          <th>Variable</th>
+          <th>Default</th>
+          <th>Description</th>
+        </tr>
+        <tr>
+          <td><code>WHISPER_MODEL_PATH</code></td>
+          <td><code>models/ggml-large-v3-turbo.bin</code></td>
+          <td>Active model (or use menubar)</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_LANGUAGE</code></td>
+          <td><code>auto</code></td>
+          <td>Language code or <code>auto</code></td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_TRANSLATE</code></td>
+          <td><code>0</code></td>
+          <td><code>1</code> = translate to English</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_AUTO_PASTE</code></td>
+          <td><code>1</code></td>
+          <td>Auto-paste after transcription</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_AUDIO_DEVICE</code></td>
+          <td><code>default</code></td>
+          <td>macOS input device or AVFoundation index</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_MAX_SECONDS</code></td>
+          <td><code>7200</code></td>
+          <td>Max recording duration (seconds)</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_HISTORY_MAX</code></td>
+          <td><code>10</code></td>
+          <td>Entries kept in history</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_NOTIFICATIONS</code></td>
+          <td><code>1</code></td>
+          <td><code>0</code> = disable notifications</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_SOUNDS</code></td>
+          <td><code>1</code></td>
+          <td><code>0</code> = disable sounds</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_HOTKEY_TOGGLE</code></td>
+          <td><code>ctrl,cmd,w</code></td>
+          <td>Toggle hotkey</td>
+        </tr>
+        <tr>
+          <td><code>WHISPER_HOTKEY_STOP</code></td>
+          <td><code>ctrl,cmd,q</code></td>
+          <td>Emergency stop hotkey</td>
+        </tr>
+      </table>
+
+      <!-- TROUBLESHOOTING -->
+      <h2>Troubleshooting</h2>
+      <ul class="warn-list">
+        <li>
+          <strong>Hotkey does nothing</strong> &mdash; Hammerspoon config not
+          reloaded. Menubar → Reload Config.
+        </li>
+        <li>
+          <strong>No audio captured</strong> &mdash; Wrong device. Run
+          <code>whisper.sh list-devices</code> and set
+          <code>WHISPER_AUDIO_DEVICE</code>.
+        </li>
+        <li>
+          <strong>whisper-cli not found</strong> &mdash; Re-run
+          <code>./install.sh</code> or <code>brew install whisper-cpp</code>.
+        </li>
+        <li>
+          <strong>Spinner stuck</strong> &mdash; Auto-clears after 10 min. Check
+          <code>$TMPDIR/whisper-error.log</code>.
+        </li>
+        <li>
+          <strong>Hotkey ignored while busy</strong> &mdash; Expected. Wait for
+          transcription to finish.
+        </li>
+        <li>
+          <strong>Model rejected for language</strong> &mdash;
+          <code>.en.bin</code> models are English-only. Switch model or set
+          <code>WHISPER_LANGUAGE=en</code>.
+        </li>
+      </ul>
+
+      <!-- TESTING -->
+      <h2>Manual Testing</h2>
+      <pre>
+./whisper.sh status         # current state + version
+./whisper.sh list-devices   # audio inputs
+./whisper.sh start          # start recording
+./whisper.sh stop           # stop + transcribe</pre
+      >
+
+      <!-- UNINSTALL -->
+      <h2>Uninstall</h2>
+      <pre>./uninstall.sh</pre>
+      <p>
+        Removes Hammerspoon integration and temp files. Optionally uninstalls
+        <code>whisper-cpp</code>, <code>ffmpeg</code> and Hammerspoon via
+        Homebrew (asks per package). The repo directory is kept.
+      </p>
+
+      <!-- FILE STRUCTURE -->
+      <h2>File Structure</h2>
+      <pre>
+Careless-Whisper/              # Repository
+├── whisper.sh                 # Core script (record/transcribe/paste)
+├── whisper_hotkeys.lua        # Hammerspoon integration + menubar
+├── install.sh                 # Installer (auto-deps via Homebrew)
+├── uninstall.sh               # Clean removal
+├── README.md
+└── index.html                 # This file
+
+Generated locally (gitignored):
+├── whisper-stt.conf           # User configuration
+├── history.txt                # Rolling transcription log
+└── models/
+    └── ggml-*.bin             # Downloaded GGML models</pre
+      >
+
+      <footer>Careless Whisper &mdash; local, private, no cloud</footer>
+    </div>
+  </body>
+</html>
