@@ -55,7 +55,7 @@ curl -L -o ~/whisper-models/ggml-medium.en.bin https://huggingface.co/ggerganov/
     <h2>Step 4: Clone the Repositories</h2>
     <p>Get the runtime code and documentation:</p>
     <pre><code># Runtime code (batch mode scripts, menubar, config)
-cd ~/Documents/claude_projects/
+cd ~/
 git clone https://github.com/bpleger/Careless-Whisper.git
 
 # Documentation (this site)
@@ -85,7 +85,7 @@ git clone &lt;your-docs-repo-url&gt; whisper</code></pre>
     <h2>Step 6: Configure Batch Mode</h2>
     <p>Configure the batch transcription settings:</p>
     <ul>
-        <li>Edit <code>~/Documents/claude_projects/whisper/upstream/Careless-Whisper/whisper-stt.conf</code>:
+        <li>Edit <code>~/whisper-mac/upstream/Careless-Whisper/whisper-stt.conf</code>:
             <ul>
                 <li><code>WHISPER_AUDIO_DEVICE=3</code> (AVFoundation device ID for your mic — run <code>ffmpeg -f avfoundation -list_devices true -i ""</code> to find yours)</li>
                 <li><code>WHISPER_LANGUAGE=en</code></li>

@@ -166,7 +166,7 @@ elif [ "$ACTION" = "stop" ]; then
     dlog "whisper_cli_done" "duration_s=$(( $(date +%s) - _T_CLI ))" "text=@${TEXT_FILE}"
 
     # Apply user dictionary corrections (longest-first). See transcription_corrections.tsv
-    CORRECTIONS_FILE="${WHISPER_CORRECTIONS:-$HOME/Documents/claude_projects/whisper/transcription_corrections.tsv}"
+    CORRECTIONS_FILE="${WHISPER_CORRECTIONS:-${WHISPER_HOME:-$HOME/whisper-mac}/transcription_corrections.tsv}"
     if [ -f "$CORRECTIONS_FILE" ] && [ -s "$TEXT_FILE" ]; then
         dlog "dictionary_apply_start" "file=${CORRECTIONS_FILE}"
         python3 - "$CORRECTIONS_FILE" "$TEXT_FILE" <<'PY'

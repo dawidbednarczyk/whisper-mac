@@ -3,8 +3,8 @@
 
 local home = os.getenv("HOME")
 -- Paths are set automatically by install.sh
-local whisper_script = home .. "/Documents/claude_projects/Careless-Whisper/whisper.sh"
-local conf_file      = home .. "/Documents/claude_projects/Careless-Whisper/whisper-stt.conf"
+local whisper_script = (os.getenv("WHISPER_HOME") or (home .. "/whisper-mac")) .. "/upstream/Careless-Whisper/whisper.sh"
+local conf_file      = (os.getenv("WHISPER_HOME") or (home .. "/whisper-mac")) .. "/upstream/Careless-Whisper/whisper-stt.conf"
 
 -- Read a value from whisper-stt.conf
 local function read_conf(key, default)

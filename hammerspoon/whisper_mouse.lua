@@ -24,8 +24,7 @@ local dbg = require("whisper_debug")
 -- F4: removed dead WHISPER_SCRIPT local (unused after middle-button rewrite).
 
 -- Paths for middle-button "paste improved transcription" flow.
-local RECORDINGS_DIR = os.getenv("HOME")
-    .. "/Documents/claude_projects/whisper/upstream/Careless-Whisper/recordings"
+local RECORDINGS_DIR = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/recordings"
 local RECORDS_JSON = os.getenv("HOME") .. "/.whisper_log/records.json"
 
 local function mev(event_name, data)

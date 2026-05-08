@@ -837,12 +837,12 @@ stop_recording() {
         # ── Transcription log hook (non-blocking, fire-and-forget) ─────────────
         # Forwards (t0=button-click, archived_wav, model, duration_ms, text_file)
         # to the local transcription-log manager. Never blocks the paste path.
-        if [ -n "${WHISPER_LAST_ARCHIVED:-}" ] && [ -x "${HOME}/Documents/claude_projects/whisper/bin/whisper_log_hook.sh" ]; then
+        if [ -n "${WHISPER_LAST_ARCHIVED:-}" ] && [ -x "${WHISPER_HOME:-$HOME/whisper-mac}/bin/whisper_log_hook.sh" ]; then
             _wlh_now_ms=$(python3 -c "import time;print(int(time.time()*1000))" 2>/dev/null || echo 0)
             _wlh_dur_ms=$(( _wlh_now_ms - _t_stop * 1000 ))
             _wlh_model="$(basename "${MODEL}")"
             (
-                "${HOME}/Documents/claude_projects/whisper/bin/whisper_log_hook.sh" \
+                "${WHISPER_HOME:-$HOME/whisper-mac}/bin/whisper_log_hook.sh" \
                     "${_t_stop}" \
                     "${WHISPER_LAST_ARCHIVED}" \
                     "${_wlh_model}" \

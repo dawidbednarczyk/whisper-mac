@@ -15,15 +15,15 @@ local WHISPER_STREAM_BIN = "/opt/homebrew/bin/whisper-stream"
 local STREAM_MODEL = os.getenv("HOME") .. "/whisper-models/ggml-base.en.bin"
 local FALLBACK_MODEL = os.getenv("HOME") .. "/whisper-models/ggml-medium.en.bin"
 local SDL_DEVICE_ID = 1  -- "Usb Audio Device" in SDL2 enumeration
-local RECORDINGS_DIR = os.getenv("HOME") .. "/Documents/claude_projects/whisper/upstream/Careless-Whisper/recordings"
+local RECORDINGS_DIR = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/recordings"
 
 local COPILOT_API_URL = "https://api.githubcopilot.com/chat/completions"
 local COPILOT_AUTH_FILE = os.getenv("HOME") .. "/.config/careless-whisper/auth.json"
 local COPILOT_MODEL = "claude-sonnet-4.6"
 
 -- Retranscribe-on-stop configuration
-local WHISPER_SH = os.getenv("HOME") .. "/Documents/claude_projects/whisper/upstream/Careless-Whisper/whisper.sh"
-local CORRECTIONS_TSV = os.getenv("HOME") .. "/Documents/claude_projects/whisper/upstream/Careless-Whisper/transcription_corrections.tsv"
+local WHISPER_SH = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/whisper.sh"
+local CORRECTIONS_TSV = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/transcription_corrections.tsv"
 local TEXT_FILE = (os.getenv("TMPDIR") or "/tmp") .. "/whisper_output.txt"
 local RETRANSCRIBE_TIMEOUT = 30  -- seconds before falling back to live text
 
@@ -1005,7 +1005,7 @@ function M.stop()
         -- with mtime >= session start), write the pasted text to a temp file,
         -- and fire the hook in the background. Failures are silent.
         pcall(function()
-            local hook = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/whisper_log_hook.sh"
+            local hook = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/whisper_log_hook.sh"
             if hs.fs.attributes(hook, "mode") ~= "file" then return end
             -- Find newest .wav in RECORDINGS_DIR
             local newest_path, newest_mtime = nil, 0
@@ -1077,8 +1077,8 @@ function M.stop()
                 _G.__whisper_pending_extractors[timer_key] = hs.timer.doAfter(1.5, function()
                     local ok, err = pcall(function()
                         log_event("screenshot_post_hook_timer_fired", { basename = basename, source = source_tag })
-                        local tl = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/transcription_log.py"
-                        local extractor = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/extract_project_from_screenshot.py"
+                        local tl = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/transcription_log.py"
+                        local extractor = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/extract_project_from_screenshot.py"
                         hs.task.new("/usr/bin/python3", nil, {tl, "set-screenshot", basename, screenshot_path}):start()
                         if hs.fs.attributes(screenshot_path, "mode") == "file" then
                             hs.task.new("/usr/bin/python3", nil, {extractor, screenshot_path, basename}):start()
@@ -1227,7 +1227,7 @@ function M.stop()
         -- stage-update hook fires but no-ops because the record doesn't exist.
         -- Fire the initial-paste hook directly here, same shape as paste_and_cleanup.
         pcall(function()
-            local hook = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/whisper_log_hook.sh"
+            local hook = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/whisper_log_hook.sh"
             if hs.fs.attributes(hook, "mode") ~= "file" then return end
             local newest_path, newest_mtime = nil, 0
             for f in hs.fs.dir(RECORDINGS_DIR) do
@@ -1296,8 +1296,8 @@ function M.stop()
                 _G.__whisper_pending_extractors[timer_key] = hs.timer.doAfter(1.5, function()
                     local ok, err = pcall(function()
                         log_event("screenshot_post_hook_timer_fired", { basename = basename, source = "instant_paste_live" })
-                        local tl = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/transcription_log.py"
-                        local extractor = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/extract_project_from_screenshot.py"
+                        local tl = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/transcription_log.py"
+                        local extractor = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/extract_project_from_screenshot.py"
                         -- Set screenshot_path on record
                         hs.task.new("/usr/bin/python3", nil, {tl, "set-screenshot", basename, screenshot_path}):start()
                         -- Extract project from screenshot (may overwrite stale window-title hint)
@@ -1419,7 +1419,7 @@ function M.stop()
                                 -- Without this, the page would only ever show the live
                                 -- (base.en) text and the worker would have to redo the work.
                                 pcall(function()
-                                    local hook = os.getenv("HOME") .. "/Documents/claude_projects/whisper/bin/whisper_log_hook.sh"
+                                    local hook = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/bin/whisper_log_hook.sh"
                                     if hs.fs.attributes(hook, "mode") ~= "file" then return end
                                     -- Find the same WAV the initial paste registered
                                     local newest_path, newest_mtime = nil, 0

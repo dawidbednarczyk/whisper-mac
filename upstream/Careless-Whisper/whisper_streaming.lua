@@ -15,15 +15,15 @@ local WHISPER_STREAM_BIN = "/opt/homebrew/bin/whisper-stream"
 local STREAM_MODEL = os.getenv("HOME") .. "/whisper-models/ggml-base.en.bin"
 local FALLBACK_MODEL = os.getenv("HOME") .. "/whisper-models/ggml-medium.en.bin"
 local SDL_DEVICE_ID = 1  -- "Usb Audio Device" in SDL2 enumeration
-local RECORDINGS_DIR = os.getenv("HOME") .. "/Documents/claude_projects/Careless-Whisper/recordings"
+local RECORDINGS_DIR = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/recordings"
 
 local COPILOT_API_URL = "https://api.githubcopilot.com/chat/completions"
 local COPILOT_AUTH_FILE = os.getenv("HOME") .. "/.config/careless-whisper/auth.json"
 local COPILOT_MODEL = "claude-sonnet-4.6"
 
 -- Retranscribe-on-stop configuration
-local WHISPER_SH = os.getenv("HOME") .. "/Documents/claude_projects/Careless-Whisper/whisper.sh"
-local CORRECTIONS_TSV = os.getenv("HOME") .. "/Documents/claude_projects/Careless-Whisper/transcription_corrections.tsv"
+local WHISPER_SH = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/whisper.sh"
+local CORRECTIONS_TSV = (os.getenv("WHISPER_HOME") or (os.getenv("HOME") .. "/whisper-mac")) .. "/upstream/Careless-Whisper/transcription_corrections.tsv"
 local TEXT_FILE = (os.getenv("TMPDIR") or "/tmp") .. "/whisper_output.txt"
 local RETRANSCRIBE_TIMEOUT = 30  -- seconds before falling back to live text
 

@@ -135,7 +135,7 @@ Re-transcribe last WAV with medium.en model → paste improved result
     </div>
 
     <h2>Audio Archiving</h2>
-    <p>Streaming mode now saves audio to <code>~/Documents/claude_projects/whisper/upstream/Careless-Whisper/recordings/</code> as timestamped WAV files (e.g. <code>20260409153835.wav</code>). This uses whisper-stream's native <code>--save-audio</code> flag — the process working directory is set to the recordings folder so files land in the right place.</p>
+    <p>Streaming mode now saves audio to <code>~/whisper-mac/upstream/Careless-Whisper/recordings/</code> as timestamped WAV files (e.g. <code>20260409153835.wav</code>). This uses whisper-stream's native <code>--save-audio</code> flag — the process working directory is set to the recordings folder so files land in the right place.</p>
     
     <p>Both batch mode and streaming mode save to the <strong>same</strong> <code>recordings/</code> directory. Streaming mode <strong>automatically retranscribes</strong> on stop using the larger <code>medium.en</code> model, applies dictionary corrections from <code>transcription_corrections.tsv</code>, and wraps the output with LLM-aware metadata. The manual re-transcribe (<kbd>Ctrl+Shift+Cmd+R</kbd> or middle mouse button) is still available for batch recordings or to re-run retranscription.</p>
 
