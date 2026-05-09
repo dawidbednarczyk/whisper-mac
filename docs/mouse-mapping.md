@@ -1,5 +1,12 @@
 # Logi MX Anywhere 3S Button Mapping
 
+> **Pick the right doc first.** This page covers the **MX Anywhere 3S**
+> (and similar Logitech mice where Forward/Back/Middle are all natively
+> visible to macOS). If you have a **Logitech M750**, follow
+> [`m750-setup.md`](m750-setup.md) instead — the M750's gesture button has
+> different requirements. Unsure? Read the
+> [mouse decision guide](mouse-decision-guide.md).
+
 ## Overview
 
 Streaming mode is triggered via mouse buttons using Logi Options+ keystroke remapping. Without these mappings, only batch mode (keyboard hotkeys Ctrl+Cmd+W / Ctrl+Cmd+Q) works. Streaming mode requires the Forward, Back, and Middle buttons to be mapped to specific keystroke combinations that Hammerspoon listens for.

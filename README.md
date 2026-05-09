@@ -173,11 +173,24 @@ Hammerspoon, click the menubar icon, choose **Reload Config**.
 The example `init.lua` references `~/whisper-mac` as the install path.
 Adjust the `WHISPER_REPO` constant at the top if you cloned elsewhere.
 
-### 5. Configure mouse (optional but recommended)
+### 5. Configure mouse
 
-Install [Logi Options+](https://www.logitech.com/software/logi-options-plus.html)
-and follow [`docs/mouse-mapping.md`](docs/mouse-mapping.md) to remap the
-Forward/Back side buttons to `Ctrl+Shift+Cmd+9` and `Ctrl+Shift+Cmd+0`.
+**Start at [`docs/mouse-decision-guide.md`](docs/mouse-decision-guide.md)** — it
+tells you which path to use based on your mouse model. Quick reference:
+
+- **Logitech M750** → Logi Options+ is *required* (the gesture button
+  below the scroll wheel emits no events without it).
+  See [`docs/m750-setup.md`](docs/m750-setup.md).
+- **MX Anywhere 3S** or similar → Logi Options+ recommended.
+  See [`docs/mouse-mapping.md`](docs/mouse-mapping.md).
+- **Generic 3-button mouse** → native Hammerspoon eventtap, no vendor
+  driver needed. See [`docs/mouse-button-mapping.md`](docs/mouse-button-mapping.md).
+- **Keyboard only** → all mouse actions have keyboard equivalents
+  (see Hotkeys table above).
+
+Do **not** combine Logi Options+ and the native eventtap — Logi Options+
+intercepts mouse buttons globally and the eventtap will silently see
+nothing. The decision guide explains why.
 
 ### 6. First run
 
