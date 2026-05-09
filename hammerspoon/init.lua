@@ -115,13 +115,29 @@ end
 -- the index in whisper-stt.conf. Customize the priority list for your gear.
 --
 -- NOTE: Built-in MacBook mic is preferred over Bluetooth headsets because
--- many Bluetooth mics (e.g. Sennheiser MB Pro 1) introduce a ~30 s
--- digital-silence prefix at record start while AVFoundation renegotiates
--- HFP/SCO. USB-wired starts instantly and wins when connected.
-local whisperPreferredMics = {
-    "Usb Audio Device",
-    "MacBook Pro Microphone",
-}
+-- many Bluetooth headsets introduce a multi-second digital-silence prefix
+-- at record start while AVFoundation renegotiates HFP/SCO. USB-wired starts
+-- instantly and wins when connected.
+--
+-- Customise this list for your hardware. Override at runtime by setting the
+-- WHISPER_MIC_PRIORITY env var to a comma-separated list of substrings
+-- (substring match, case-sensitive, in priority order).
+local function whisperLoadMicPriority()
+    local env = os.getenv("WHISPER_MIC_PRIORITY")
+    if env and env ~= "" then
+        local list = {}
+        for name in string.gmatch(env, "([^,]+)") do
+            local trimmed = name:match("^%s*(.-)%s*$")
+            if trimmed and trimmed ~= "" then list[#list + 1] = trimmed end
+        end
+        if #list > 0 then return list end
+    end
+    return {
+        "Usb Audio Device",          -- generic USB mic
+        "MacBook Pro Microphone",    -- built-in fallback
+    }
+end
+local whisperPreferredMics = whisperLoadMicPriority()
 
 function whisperCheckMicrophone()
     hs.alert.show("Checking Microphone...", 1)

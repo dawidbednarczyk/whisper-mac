@@ -63,7 +63,6 @@ whisper-mac/
 ├── README.md                       # This file
 ├── ARCHITECTURE.md                 # How the pieces fit together
 ├── .gitignore
-├── whisper.sh                      # Top-level batch wrapper
 ├── models.sha256                   # Checksums for GGML models
 ├── requirements.txt                # Python deps for log/render scripts
 ├── nav.js                          # Shared nav bar for HTML pages
@@ -73,18 +72,22 @@ whisper-mac/
 ├── controls.html                   # Hotkey reference (browser)
 ├── streaming.html                  # Streaming mode docs (browser)
 ├── architecture.html               # Architecture diagram (browser)
+├── transcription-log.html          # Log schema + dashboard reference (browser)
 ├── troubleshooting.html            # FAQ (browser)
 │
 ├── bin/                            # Python + shell helpers
-│   ├── transcription_log.py        # Main log writer & query tool
-│   ├── transcription_worker.py     # Background transcription worker
-│   ├── _html_render.py             # Renders log → HTML dashboard
-│   ├── _status_render.py           # Renders live status snippet
-│   ├── backfill.py                 # Backfill log from old recordings
-│   ├── install_models.sh           # Download GGML models
-│   ├── sync_hammerspoon.sh         # Copy Lua files into ~/.hammerspoon/
-│   ├── whisper_log_hook.sh         # Hook called by whisper.sh after each run
-│   └── whisper_debug_tail.sh       # Tail debug log live
+│   ├── transcription_log.py            # Main log writer & query tool
+│   ├── transcription_worker.py         # 6-stage background worker
+│   ├── _html_render.py                 # Renders log → HTML dashboard
+│   ├── _status_render.py               # Renders live status snippet
+│   ├── backfill.py                     # Re-runs N old recordings through missing stages
+│   ├── extract_project_from_screenshot.py  # OCR project attribution (needs tesseract)
+│   ├── install_models.sh               # Download + verify GGML models
+│   ├── sync_hammerspoon.sh             # Copy Lua files into ~/.hammerspoon/
+│   ├── backup_records.sh               # Snapshot ~/.whisper_log/records.json
+│   ├── disaster_recovery_check.sh      # Health-check log + worker + models
+│   ├── whisper_log_hook.sh             # Post-run hook that writes log entries
+│   └── whisper_debug_tail.sh           # Tail debug log live
 │
 ├── hammerspoon/                    # Lua glue for Hammerspoon
 │   ├── README.md
@@ -95,8 +98,10 @@ whisper-mac/
 │   └── whisper_debug.lua           # Debug helpers
 │
 ├── docs/
-│   ├── mouse-mapping.md            # Logi Options+ setup
-│   └── macos-permissions.md        # Accessibility / Mic / Input Monitoring
+│   ├── mouse-mapping.md            # Mouse side-button mapping (vendor utility)
+│   ├── macos-permissions.md        # Accessibility / Mic / Input Monitoring
+│   ├── transcription-log.md        # Log schema, fields, troubleshooting
+│   └── recovery.md                 # Disaster-recovery + backup playbook
 │
 └── upstream/
     └── Careless-Whisper/           # Vendored Bjorn Pleger upstream
@@ -247,7 +252,8 @@ the full FAQ. Highlights:
 - **Hotkey does nothing** → reload Hammerspoon config, check Accessibility.
 - **Mouse buttons do nothing** → check Input Monitoring permission for
   Hammerspoon, verify Logi Options+ is running.
-- **No audio** → run `./whisper.sh list-devices`, update
+- **No audio** → list AVFoundation devices with
+  `ffmpeg -f avfoundation -list_devices true -i ""`, then update
   `WHISPER_AUDIO_DEVICE` in the conf file (or rely on self-healing).
 - **Slow first recording** → expected; Metal kernels JIT on first use.
   Subsequent recordings are instant.

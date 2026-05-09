@@ -13,73 +13,63 @@
 
     <h2>Prerequisites</h2>
     <ul>
-        <li>macOS (tested on macOS with Apple Silicon — M4 Pro)</li>
+        <li>macOS on Apple Silicon (Metal-accelerated whisper.cpp)</li>
         <li>Homebrew package manager</li>
-        <li>Git</li>
+        <li>Git, Python 3.10+</li>
         <li>A USB microphone (or built-in MacBook mic)</li>
-        <li>Logitech MX Anywhere 3S mouse (optional, for streaming mode mouse buttons)</li>
+        <li>A mouse with programmable side buttons (optional, for streaming-mode triggers)</li>
         <li>GitHub Copilot subscription (optional, for grammar correction in streaming mode)</li>
     </ul>
 
     <h2>Step 1: Install Homebrew Packages</h2>
-    <p>Install the core Whisper and audio recording tools:</p>
-    <pre><code>brew install whisper-cpp ffmpeg</code></pre>
+    <p>Install whisper.cpp, audio recording, and OCR (used for project attribution from screenshots):</p>
+    <pre><code>brew install whisper-cpp ffmpeg tesseract
+brew install --cask hammerspoon</code></pre>
     <ul>
-        <li>This installs: <code>whisper-cli</code> (batch transcription), <code>whisper-stream</code> (live streaming), <code>whisper-server</code>, and <code>ffmpeg</code> (audio recording)</li>
+        <li>This installs: <code>whisper-cli</code> (batch transcription), <code>whisper-stream</code> (live streaming), <code>whisper-server</code>, <code>ffmpeg</code> (audio recording), and <code>tesseract</code> (OCR for <code>bin/extract_project_from_screenshot.py</code>)</li>
         <li>Verify: <code>which whisper-cli</code> → <code>/opt/homebrew/bin/whisper-cli</code></li>
         <li>Verify: <code>which whisper-stream</code> → <code>/opt/homebrew/bin/whisper-stream</code></li>
+        <li>Verify: <code>which tesseract</code> → <code>/opt/homebrew/bin/tesseract</code></li>
     </ul>
 
-    <h2>Step 2: Download Whisper Models</h2>
-    <p>Download both models to support both streaming and batch modes:</p>
-    <pre><code>mkdir -p ~/whisper-models
-# Base model for streaming (141MB, fast ~55ms per step)
-curl -L -o ~/whisper-models/ggml-base.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
-# Medium model for batch (1.5GB, more accurate)
-curl -L -o ~/whisper-models/ggml-medium.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin</code></pre>
+    <h2>Step 2: Clone the Repository</h2>
+    <p>Clone <code>whisper-mac</code> — Careless-Whisper is vendored under <code>upstream/</code>, so no separate clone is needed:</p>
+    <pre><code>git clone https://github.com/dawidbednarczyk/whisper-mac.git ~/whisper-mac
+cd ~/whisper-mac</code></pre>
+
+    <h2>Step 3: Install Python Dependencies</h2>
+    <p>The transcription log, dashboard renderer, and worker need a Python venv:</p>
+    <pre><code>python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt</code></pre>
     <div class="info-box">
-        <strong>Model Selection:</strong> The base.en model is 141MB and perfect for real-time streaming. The medium.en model is 1.5GB and provides higher accuracy for batch transcription.
+        <strong>Re-activate the venv</strong> in every new shell that runs <code>bin/transcription_worker.py</code>, <code>bin/backfill.py</code>, or <code>bin/_html_render.py</code>. Hammerspoon-launched workers should use the absolute interpreter path <code>~/whisper-mac/.venv/bin/python3</code>.
     </div>
 
-    <h2>Step 3: Install Hammerspoon</h2>
-    <p>Hammerspoon provides the automation framework for both streaming and batch modes:</p>
-    <pre><code>brew install --cask hammerspoon</code></pre>
+    <h2>Step 4: Download Whisper Models</h2>
+    <p>The 6-stage pipeline needs three GGML models (<code>base.en</code>, <code>medium.en</code>, <code>large-v3</code>). Use the helper script — it downloads, verifies SHA-256 against <code>models.sha256</code>, and is idempotent:</p>
+    <pre><code>./bin/install_models.sh</code></pre>
     <ul>
-        <li>Open Hammerspoon from Applications</li>
-        <li>Grant Accessibility permissions: System Settings → Privacy & Security → Accessibility → enable Hammerspoon</li>
-        <li>Grant Microphone permissions when prompted</li>
-        <li>The <code>hs</code> CLI is at <code>/Applications/Hammerspoon.app/Contents/Frameworks/hs/hs</code></li>
-        <li>Add <code>require("hs.ipc")</code> to init.lua to enable CLI</li>
+        <li>Models land in <code>~/whisper-models/</code> (read by <code>whisper-stt.conf</code> and <code>hammerspoon/whisper_streaming.lua</code>).</li>
+        <li>Sizes: <code>ggml-base.en.bin</code> ~150 MB, <code>ggml-medium.en.bin</code> ~1.5 GB, <code>ggml-large-v3.bin</code> ~3.1 GB.</li>
+        <li>Re-verify any time: <code>cd ~/whisper-models &amp;&amp; shasum -a 256 -c ~/whisper-mac/models.sha256</code></li>
     </ul>
-
-    <h2>Step 4: Clone the Repositories</h2>
-    <p>Get the runtime code and documentation:</p>
-    <pre><code># Runtime code (batch mode scripts, menubar, config)
-cd ~/
-git clone https://github.com/bpleger/Careless-Whisper.git
-
-# Documentation (this site)
-git clone &lt;your-docs-repo-url&gt; whisper</code></pre>
-    <div class="info-box">
-        <strong>Forking:</strong> If you fork Careless-Whisper to your own account, set up remotes: origin = your fork (pushable), upstream = bpleger/Careless-Whisper (read-only).
+    <div class="warning-box">
+        <strong>⚠️ Required for the log dashboard:</strong> All three models must be present. <code>bin/transcription_worker.py</code> runs every recording through 6 stages (base/medium/large-v3 × raw/corrected); a missing model leaves rows stuck in <strong>queued</strong> forever.
     </div>
 
-    <h2>Step 5: Configure Hammerspoon</h2>
-    <p>Set up the Hammerspoon configuration to load all Whisper modules:</p>
+    <h2>Step 5: Wire Up Hammerspoon</h2>
+    <p>Hammerspoon provides hotkeys, mouse triggers, the streaming overlay, and the self-healing mic check. Sync the Lua files into <code>~/.hammerspoon/</code> with the helper:</p>
+    <pre><code>./bin/sync_hammerspoon.sh</code></pre>
     <ul>
-        <li>Create/edit <code>~/.hammerspoon/init.lua</code> — this file loads all modules</li>
-        <li>Copy streaming files to <code>~/.hammerspoon/</code>:
-            <ul>
-                <li><code>whisper_overlay.lua</code> — streaming overlay UI</li>
-                <li><code>whisper_streaming.lua</code> — streaming engine</li>
-                <li><code>whisper_mouse.lua</code> — mouse button bindings</li>
-            </ul>
-        </li>
-        <li>Reload Hammerspoon after changes:</li>
+        <li>Open Hammerspoon from Applications.</li>
+        <li>Grant Accessibility permissions: System Settings → Privacy &amp; Security → Accessibility → enable Hammerspoon.</li>
+        <li>Grant Microphone and Input Monitoring permissions when prompted.</li>
+        <li>Reload Hammerspoon after every config edit:</li>
     </ul>
     <pre><code>killall Hammerspoon; sleep 1; open -a Hammerspoon</code></pre>
     <div class="warning-box">
-        <strong>⚠️ Warning:</strong> NEVER use <code>hs.reload()</code> or the URL scheme to reload Hammerspoon. Always use <code>killall</code> + <code>open</code>. Config changes don't auto-apply.
+        <strong>⚠️ Warning:</strong> NEVER use <code>hs.reload()</code> or the URL scheme to reload Hammerspoon. Always use <code>killall</code> + <code>open</code>. Some config changes don't auto-apply.
     </div>
 
     <h2>Step 6: Configure Batch Mode</h2>
@@ -97,15 +87,13 @@ git clone &lt;your-docs-repo-url&gt; whisper</code></pre>
     </ul>
 
     <h2>Step 7: Configure Mouse Buttons (Optional)</h2>
-    <p>Set up the MX Anywhere 3S side buttons for streaming mode:</p>
+    <p>If your mouse has programmable side buttons, map them to the streaming hotkeys via the vendor's utility (e.g. Logi Options+ for Logitech, Steermouse for generic mice):</p>
     <ul>
-        <li>Install Logi Options+ from Logitech website</li>
-        <li>Open Logi Options+ → select MX Anywhere 3S</li>
-        <li>For Forward button: assign keyboard shortcut <kbd>Ctrl+Shift+Cmd+9</kbd></li>
-        <li>For Back button: assign keyboard shortcut <kbd>Ctrl+Shift+Cmd+0</kbd></li>
+        <li>Forward button → <kbd>Ctrl+Shift+Cmd+9</kbd> (start streaming)</li>
+        <li>Back button → <kbd>Ctrl+Shift+Cmd+0</kbd> (stop streaming)</li>
     </ul>
     <div class="info-box">
-        <strong>Why this works:</strong> The MX Anywhere 3S side buttons don't generate standard macOS CGEvents. Hammerspoon cannot detect them directly. Logi Options+ remaps them to keyboard shortcuts that Hammerspoon CAN detect. See <a href="controls.html">Controls Reference</a> for full details.
+        <strong>Why the indirection:</strong> Many mouse side buttons don't generate standard macOS CGEvents, so Hammerspoon cannot detect them directly. The vendor utility remaps them to keyboard shortcuts that Hammerspoon CAN detect. See <a href="controls.html">Controls Reference</a> for full details.
     </div>
 
     <h2>Step 8: Configure Copilot Auth (Optional)</h2>
@@ -123,8 +111,9 @@ echo '{"token":"ghu_YOUR_COPILOT_TOKEN"}' > ~/.config/careless-whisper/auth.json
     <code>~/.whisper_log/records.json</code> and renders a dashboard at
     <code>~/.whisper_log/transcriptions.html</code>.</p>
     <p>After making your first batch recording, kick the log so the
-    dashboard renders, then open it:</p>
-    <pre><code>python3 bin/backfill.py 1
+    dashboard renders, then open it (re-activate the venv first if you opened a new shell):</p>
+    <pre><code>source .venv/bin/activate
+python3 bin/backfill.py 1
 open ~/.whisper_log/transcriptions.html</code></pre>
     <p>You should see one row with status badges for each stage. Stages that
     are still queued show <strong>queued</strong>; once the worker picks them
@@ -175,7 +164,7 @@ open ~/.whisper_log/transcriptions.html</code></pre>
         </tbody>
     </table>
     <div class="info-box">
-        <strong>Device ID Differences:</strong> SDL2 and AVFoundation use DIFFERENT device IDs for the same physical microphone. The self-healing mic check in init.lua auto-corrects if the device index shifts after USB reconnect. Priority: Usb Audio Device > Sennheiser MB Pro 1 > MacBook Pro Microphone.
+        <strong>Device ID Differences:</strong> SDL2 and AVFoundation use DIFFERENT device IDs for the same physical microphone. The self-healing mic check in <code>init.lua</code> auto-corrects if the device index shifts after USB reconnect. Override the priority list with the <code>WHISPER_MIC_PRIORITY</code> env var (comma-separated names); the default is <code>Usb Audio Device, MacBook Pro Microphone</code>.
     </div>
 </div>
 <script src="nav.js"></script>

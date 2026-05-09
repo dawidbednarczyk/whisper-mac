@@ -6,7 +6,7 @@
 # Captured: 2026-04-28 from disaster-recovery audit.
 #
 # If a future HuggingFace re-upload changes a hash, update this file deliberately
-# and note the reason in docs/security-incidents.md (model integrity audit trail).
+# and note the reason in your commit message (model integrity audit trail).
 
 a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002  ggml-base.en.bin
 cc37e93478338ec7700281a7ac30a10128929eb8f427dda2e865faa8f6da4356  ggml-medium.en.bin

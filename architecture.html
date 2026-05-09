@@ -135,11 +135,10 @@
     <ul>
         <li>After every batch transcription, <code>whisperCheckMicrophone()</code> in init.lua runs</li>
         <li>It scans AVFoundation devices using <code>ffmpeg -f avfoundation -list_devices true</code></li>
-        <li>Pattern-based discovery with priority order:
+        <li>Pattern-based discovery with priority order (substring match, case-sensitive). Default list is editable in <code>init.lua</code> and overridable at runtime via the <code>WHISPER_MIC_PRIORITY</code> env var (comma-separated substrings):
             <ol>
-                <li>Usb Audio Device (preferred)</li>
-                <li>Sennheiser MB Pro 1</li>
-                <li>MacBook Pro Microphone (fallback)</li>
+                <li>Usb Audio Device (preferred — generic USB mic)</li>
+                <li>MacBook Pro Microphone (fallback — built-in)</li>
             </ol>
         </li>
         <li>If the device index changed (e.g., USB reconnect), it auto-updates whisper-stt.conf</li>
