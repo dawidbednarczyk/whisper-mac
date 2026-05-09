@@ -4,7 +4,6 @@
     { section: "Overview" },
     { href: "index.html",            label: "Home" },
     { href: "streaming.html",        label: "⭐ Live Streaming" },
-    { href: "gap_analysis.html",     label: "🔀 Fork vs Upstream" },
     { section: "Setup" },
     { href: "installation.html",     label: "Installation Guide" },
     { href: "architecture.html",     label: "Architecture" },
