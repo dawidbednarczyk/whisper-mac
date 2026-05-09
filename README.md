@@ -26,8 +26,11 @@ mouse triggers, log dashboards, and Hammerspoon integration.
 - **Self-healing microphone** — Hammerspoon detects the best connected mic
   by name and rewrites the AVFoundation index in `whisper-stt.conf` when
   USB devices are plugged/unplugged.
-- **Transcription log** — `~/.whisper_log/records.json` accumulates every
-  recording. HTML pages render this as a browsable dashboard.
+- **Transcription log** — every recording produces 6 stages (`base.en` and
+  `medium.en` raw + corrected, `large-v3` raw + corrected) into
+  `~/.whisper_log/records.json`. A local HTML dashboard polls the log and
+  shows per-stage status badges, so you can compare model quality and
+  pick the best transcript. See [`docs/transcription-log.md`](docs/transcription-log.md).
 - **Dictionary corrections** — apply a TSV of misheard→correct pairs to
   every transcript (great for proper names, product terms, jargon).
 - **Clipboard image paste** — `Ctrl+Shift+Cmd+V` saves clipboard images to
@@ -208,6 +211,31 @@ transcript.
 Multilingual variants (`ggml-medium.bin`, etc.) work too — set
 `WHISPER_LANGUAGE` in the conf file. Download from
 [Hugging Face](https://huggingface.co/ggerganov/whisper.cpp).
+
+---
+
+## Transcription Log
+
+Every recording is processed through 6 stages and appended to
+`~/.whisper_log/records.json`. A local HTML dashboard
+(`~/.whisper_log/transcriptions.html`) polls the log every 5 s and
+renders per-stage status badges so you can compare `base.en` vs
+`medium.en` vs `large-v3` quality side-by-side and pick the best one.
+
+The log also captures a screenshot at recording start (used to attribute
+each transcript to the project / app you were working in) and a t0
+sidecar file written by Hammerspoon so wall-clock latency can be
+computed end-to-end.
+
+Helper scripts:
+
+- `bin/backfill.py N` — re-runs the last N audio files through any
+  missing pipeline stages (useful after adding a new model).
+- `bin/extract_project_from_screenshot.py PATH` — OCRs a screenshot
+  and writes the inferred project name as a sidecar `.project.txt`.
+
+Full reference: [`docs/transcription-log.md`](docs/transcription-log.md)
+and the rendered [`transcription-log.html`](transcription-log.html).
 
 ---
 

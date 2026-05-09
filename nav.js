@@ -10,6 +10,7 @@
     { href: "architecture.html",     label: "Architecture" },
     { section: "Reference" },
     { href: "controls.html",         label: "Controls & Shortcuts" },
+    { href: "transcription-log.html", label: "Transcription Log" },
     { href: "troubleshooting.html",  label: "Troubleshooting" },
   ];
 

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper STT — Transcription Log</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="main">
+    <h1>Transcription Log</h1>
+    <p class="subtitle">The persistence and visualization layer for every recording — six pipeline stages, browseable as a self-refreshing local webpage.</p>
+
+    <div class="info-box">
+        <strong>TL;DR:</strong> Every recording produces one entry in <code>~/.whisper_log/records.json</code>, runs through six pipeline stages, and renders into <code>~/.whisper_log/transcriptions.html</code>. Open it with <code>file://</code> — it self-refreshes every 5&nbsp;seconds.
+    </div>
+
+    <h2>1. Why it exists</h2>
+    <p>A single recording is transcribed up to <strong>six times</strong> so you can compare quality vs latency:</p>
+    <table>
+        <thead>
+            <tr><th>Stage</th><th>Model</th><th>Variant</th><th>Use</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td><code>base.en</code></td><td>raw</td><td>Fastest, raw whisper output</td></tr>
+            <tr><td>2</td><td><code>base.en</code></td><td>corrected</td><td>TSV dictionary applied</td></tr>
+            <tr><td>3</td><td><code>medium.en</code></td><td>raw</td><td>Mid-tier accuracy</td></tr>
+            <tr><td>4</td><td><code>medium.en</code></td><td>corrected</td><td>Mid-tier + dictionary</td></tr>
+            <tr><td>5</td><td><code>large-v3</code></td><td>raw</td><td>Best whisper accuracy</td></tr>
+            <tr><td>6</td><td><code>large-v3</code></td><td>corrected</td><td>Best + dictionary + Copilot grammar</td></tr>
+        </tbody>
+    </table>
+    <p>"Corrected" stages apply a TSV of <em>misheard&nbsp;→&nbsp;correct</em> pairs (proper names, product terms, jargon). The large-v3 corrected stage additionally runs an optional Copilot post-process pass for grammar.</p>
+
+    <h2>2. Files in <code>~/.whisper_log/</code></h2>
+    <p>The directory is created automatically on first append.</p>
+    <table>
+        <thead><tr><th>Path</th><th>Role</th></tr></thead>
+        <tbody>
+            <tr><td><code>records.json</code></td><td>Source of truth — one JSON object per recording</td></tr>
+            <tr><td><code>status.json</code></td><td>Aggregate counts (queued / running / done / failed)</td></tr>
+            <tr><td><code>transcriptions.html</code></td><td>Rendered dashboard (open with <code>file://</code>)</td></tr>
+            <tr><td><code>queue/&lt;basename&gt;__&lt;stage&gt;.todo</code></td><td>Pending work for the worker</td></tr>
+            <tr><td><code>queue/&lt;basename&gt;__&lt;stage&gt;.running</code></td><td>Worker has claimed this item</td></tr>
+            <tr><td><code>worker.lock</code></td><td>Single-worker mutex (advisory <code>flock</code>)</td></tr>
+            <tr><td><code>worker.log</code></td><td>Worker stdout/stderr</td></tr>
+            <tr><td><code>trace.jsonl</code></td><td>Append-only event trace (debugging)</td></tr>
+            <tr><td><code>screenshots/&lt;basename&gt;.png</code></td><td>Hammerspoon screenshot at button-down</td></tr>
+            <tr><td><code>extract_project.log</code></td><td>Project-attribution script log</td></tr>
+        </tbody>
+    </table>
+
+    <h2>3. The flow of one recording</h2>
+    <pre><code>┌─ Hammerspoon (whisper_streaming.lua, whisper_mouse.lua)
+│     button-down → write t0 sidecar + capture screenshot
+│
+├─ whisper.sh (upstream Careless-Whisper)
+│     records WAV, runs first-pass transcription
+│
+├─ bin/whisper_log_hook.sh
+│     bridge: invokes ↓
+│
+├─ bin/transcription_log.py append
+│     creates record in records.json,
+│     enqueues queue/&lt;basename&gt;__stage{1..6}.todo,
+│     calls _maybe_spawn_workers_for(basename) → Popen()
+│
+├─ bin/transcription_worker.py  (auto-spawned, no launchd needed)
+│     pulls .todo → renames to .running → runs whisper.cpp
+│     → writes stage output back to records.json
+│     → re-renders transcriptions.html and status.json
+│
+└─ Browser (open transcriptions.html as file://)
+      &lt;script type="module"&gt; polls records.json every 5 s</code></pre>
+    <div class="info-box">
+        <strong>Key property:</strong> the worker is <em>auto-spawned</em> by the append call. No <code>launchd</code> plist, no daemon to install. The first append after boot starts the worker; <code>flock</code> on <code>worker.lock</code> prevents duplicates.
+    </div>
+
+    <h2>4. Opening the dashboard</h2>
+    <pre><code>open ~/.whisper_log/transcriptions.html</code></pre>
+    <p>Stage cells go through:</p>
+    <ul>
+        <li>⏳ <strong>queued</strong> — <code>.todo</code> file exists, worker not yet processing</li>
+        <li>▶️ <strong>running</strong> — <code>.running</code> file exists, whisper.cpp is transcribing</li>
+        <li>✅ <strong>done</strong> — text written to <code>records.json</code></li>
+        <li>⚠️ <strong>degraded</strong> — completed but with a <code>degraded_note</code> (e.g. Copilot unreachable)</li>
+        <li>❌ <strong>failed</strong> — worker error, see <code>worker.log</code></li>
+    </ul>
+
+    <h2>5. Project attribution</h2>
+    <p>When Hammerspoon captures a recording, it also takes a screenshot of your active screen and saves it to <code>~/.whisper_log/screenshots/&lt;basename&gt;.png</code>. After the recording finishes, <code>bin/extract_project_from_screenshot.py</code> runs:</p>
+    <ol>
+        <li>OCR the screenshot (Tesseract).</li>
+        <li>Look for cwd-style indicators in terminal panes / status lines (<code>~/projects/foo:main</code>, OpenCode statusline, IDE title bars).</li>
+        <li>Apply STOP-words to filter out container folders (<code>Documents</code>, <code>Users</code>, <code>projects</code>, <code>ai_projects</code>, etc.) and the current <code>$USER</code>.</li>
+        <li>Optionally consult an LLM if heuristics are inconclusive.</li>
+        <li>Write <code>project</code> and <code>project_source</code> fields back into the record.</li>
+    </ol>
+    <p>The dashboard shows the inferred project as a column. Empty values are non-fatal — the record still functions.</p>
+
+    <h2>6. Backfilling</h2>
+    <p>To enqueue WAVs that were recorded before the log existed:</p>
+    <pre><code>python3 bin/backfill.py            # 20 newest WAVs
+python3 bin/backfill.py 50         # 50 newest
+python3 bin/backfill.py --all      # everything</code></pre>
+    <p>Defaults look in <code>$WHISPER_HOME/upstream/Careless-Whisper/recordings/</code>. Set <code>WHISPER_HOME</code> to override; otherwise the script auto-detects the repo root from its own location, then falls back to <code>~/whisper-mac</code>.</p>
+    <p><code>backfill.py</code> is idempotent — re-running skips WAVs already in the log.</p>
+    <p>Maintenance flag <code>--strip-degraded-suffix</code> migrates legacy in-text notes (e.g. <code>[copilot empty response]</code>) into the structured <code>degraded_note</code> field.</p>
+
+    <h2>7. Schema (<code>records.json</code>)</h2>
+    <pre><code>{
+  "20260509-143022_my-recording": {
+    "t0_epoch": 1715268622.531,
+    "wav_path": "/Users/&lt;you&gt;/whisper-mac/upstream/.../my-recording.wav",
+    "duration_ms": 4280,
+    "project": "whisper-mac",
+    "project_source": "screenshot:cwd_match",
+    "stages": {
+      "base.en_raw":      { "status": "done",     "text": "...", "duration_ms": 410 },
+      "base.en_corr":     { "status": "done",     "text": "...", "duration_ms": 415 },
+      "medium.en_raw":    { "status": "done",     "text": "...", "duration_ms": 1820 },
+      "medium.en_corr":   { "status": "done",     "text": "...", "duration_ms": 1830 },
+      "large-v3_raw":     { "status": "running" },
+      "large-v3_corr":    { "status": "queued" }
+    },
+    "screenshot_path": "/Users/&lt;you&gt;/.whisper_log/screenshots/20260509-143022_my-recording.png"
+  }
+}</code></pre>
+    <p>Top-level keys are recording basenames (timestamp + slug). Each record has <code>stages</code> keyed by <code>&lt;model&gt;_&lt;variant&gt;</code>.</p>
+
+    <h2>8. Troubleshooting</h2>
+    <table>
+        <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
+        <tbody>
+            <tr><td>Page is blank / empty rows</td><td><code>records.json</code> empty (no recordings yet)</td><td>Trigger a recording with <kbd>Ctrl+Cmd+W</kbd> → <kbd>Ctrl+Cmd+Q</kbd></td></tr>
+            <tr><td>Stages stuck at ⏳ queued</td><td>Worker not running</td><td>Check <code>worker.log</code>; remove stale <code>worker.lock</code> if no <code>whisper-cli</code> process is alive; trigger another recording or run <code>python3 bin/backfill.py 1</code> to re-spawn</td></tr>
+            <tr><td>Page won't open / <code>file://</code> JS blocked</td><td>Some browsers refuse <code>file://</code> JS modules</td><td>Use Safari, or <code>python3 -m http.server</code> from <code>~/.whisper_log/</code> and open <code>http://localhost:8000/transcriptions.html</code></td></tr>
+            <tr><td>Project column always empty</td><td>OCR found no match, or <code>extract_project_from_screenshot.py</code> failed</td><td>See <code>~/.whisper_log/extract_project.log</code>; verify Tesseract (<code>brew install tesseract</code>)</td></tr>
+            <tr><td>Stage 6 shows <code>"no copilot token"</code></td><td>Optional Copilot auth missing</td><td>Configure <code>auth.json</code> (see <a href="installation.html">Installation Step 8</a>) — expected if you skipped that step</td></tr>
+            <tr><td>Dictionary corrections not applied</td><td><code>transcription_corrections.tsv</code> missing or unreadable</td><td>Ensure the TSV exists where your <code>whisper.sh</code> config points; format is one <code>wrong\tright</code> pair per line</td></tr>
+        </tbody>
+    </table>
+
+    <h2>9. See also</h2>
+    <ul>
+        <li><a href="architecture.html">Architecture</a> — high-level pipeline and module map</li>
+        <li><a href="installation.html">Installation Guide</a> — Step 10 has a smoke-test for the log</li>
+        <li><code>bin/transcription_log.py --help</code> — CLI surface</li>
+    </ul>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

@@ -117,7 +117,23 @@ echo '{"token":"ghu_YOUR_COPILOT_TOKEN"}' > ~/.config/careless-whisper/auth.json
         <strong>Optional Feature:</strong> Copilot auth is optional. Without it, streaming mode works perfectly — you just don't get automatic grammar correction.
     </div>
 
-    <h2>Step 9: Verify Everything</h2>
+    <h2>Step 9: Verify the Transcription Log</h2>
+    <p>The log captures every recording across 6 pipeline stages
+    (<code>base.en</code> + <code>medium.en</code> + <code>large-v3</code>, raw and corrected) into
+    <code>~/.whisper_log/records.json</code> and renders a dashboard at
+    <code>~/.whisper_log/transcriptions.html</code>.</p>
+    <p>After making your first batch recording, kick the log so the
+    dashboard renders, then open it:</p>
+    <pre><code>python3 bin/backfill.py 1
+open ~/.whisper_log/transcriptions.html</code></pre>
+    <p>You should see one row with status badges for each stage. Stages that
+    are still queued show <strong>queued</strong>; once the worker picks them
+    up they flip to <strong>running</strong> and finally <strong>done</strong>.</p>
+    <div class="info-box">
+        <strong>Reference:</strong> See <a href="transcription-log.html">Transcription Log</a> for the schema, project attribution, and troubleshooting.
+    </div>
+
+    <h2>Step 10: Verify Everything</h2>
     <p>Run through this checklist to confirm your installation is working:</p>
     <ol>
         <li>Hammerspoon shows in menubar (○ icon)</li>
@@ -126,6 +142,7 @@ echo '{"token":"ghu_YOUR_COPILOT_TOKEN"}' > ~/.config/careless-whisper/auth.json
         <li>Press mouse Forward button — overlay appears at bottom of screen with red STREAMING badge</li>
         <li>Speak — words appear in real-time on the overlay</li>
         <li>Press mouse Back button — overlay closes, text is pasted</li>
+        <li>Open <code>~/.whisper_log/transcriptions.html</code> — your recording appears with per-stage status badges</li>
     </ol>
 
     <h2>Audio Device Reference</h2>

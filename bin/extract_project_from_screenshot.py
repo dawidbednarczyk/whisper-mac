@@ -55,13 +55,13 @@ def log(msg: str) -> None:
 # letting an LLM weigh signals.
 
 # Cwd indicators — strongest signal. Matches:
-#   ~/Documents/claude_projects/whisper:main         (OpenCode statusline)
-#   ~/Documents/claude_projects/whisper              (bare path)
+#   ~/Documents/projects/myapp:main                  (OpenCode statusline)
+#   ~/Documents/projects/myapp                       (bare path)
 #   /Users/<you>/projects/example
-#   ~/claude_projects/whisper
+#   ~/code/myapp
 #
 # Tesseract OCR of dark-theme statusline often introduces:
-#   - stray spaces inside words ("whi sper", "claude_proiects")
+#   - stray spaces inside words ("my app", "proiects")
 #   - apostrophe in "Documents" → "Document's"
 #   - 'i' misread as '|' or '!'
 #   - 'j' misread as 'i' (proiects vs projects — accepted via fuzzy alt)
@@ -71,8 +71,8 @@ def log(msg: str) -> None:
 # identifiers with a space ("bu-open-Orchestrator" etc). The original
 # pattern allowed `(?:\s[\w.\-]+)?` inside the project token to glue them
 # back. Problem (cycle-3): that also greedy-slurps trailing noise after a
-# legit project, turning `.../Migros_CCC_to_2.3.7.11_upgrade 1.4.10` into
-# the candidate `Migros_CCC_to_2.3.7.11_upgrade 1.4.10` — which then
+# legit project, turning `.../customer-x_upgrade_2.3.7.11 1.4.10` into
+# the candidate `customer-x_upgrade_2.3.7.11 1.4.10` — which then
 # (correctly) fails the known-folder match. The fix is to constrain the
 # optional tail: only allow it when the first token is very short
 # (<=4 chars, which can happen with OCR fragmentation) AND the joined
@@ -80,10 +80,11 @@ def log(msg: str) -> None:
 # _normalize_candidate, so the regex itself no longer accepts
 # arbitrary space-separated tails.
 _CWD_RE = re.compile(
-    r"~?/?(?:Users/[\w.\-]+/)?(?:Document'?s/)?claude[_\-]?pro[ij]ects/(?P<project>[\w.\-]+)",
+    r"~?/?(?:Users/[\w.\-]+/)?(?:Document'?s/)?(?:claude[_\-]?pro[ij]ects|ai[_\-]?projects|projects)/(?P<project>[\w.\-]+)",
     re.IGNORECASE,
 )
-# Generic deep path — for projects outside claude_projects (e.g. ~/bin, ~/repos/foo)
+# Generic deep path — for projects in arbitrary locations (e.g. ~/bin, ~/repos/foo)
+# matches paths outside the AI-projects folder configured via $WHISPER_PROJECTS_DIR.
 _DEEP_PATH_RE = re.compile(
     r"~?/?(?:[\w.\-]+/){2,}(?P<project>[\w.\-]+?)(?=[\s:/\n]|$)"
 )
@@ -108,7 +109,8 @@ _STOP = {
     # Filesystem containers
     "Users", "Documents", "Desktop", "Downloads", "Library", "Applications",
     "System", "private", "tmp", "var", "opt", "usr", "etc", "home",
-    "claude_projects", "claude-projects", "github", "GitHub",
+    "claude_projects", "claude-projects", "ai_projects", "ai-projects",
+    "projects", "github", "GitHub",
     "src", "bin", "lib", "node_modules", "dist", "build", "target",
     # Git refs
     "main", "master", "develop", "HEAD", "trunk",
@@ -142,11 +144,28 @@ _STOP_NOISE = {
 _STOP = _STOP | _STOP_NOISE
 
 
+def _projects_dir() -> Path:
+    """Resolve the projects-scan directory.
+
+    Honours $WHISPER_PROJECTS_DIR; falls back to `~/Documents/projects`,
+    then to `~/projects`. Returns the first that exists, or the env-var
+    value (even if missing) so callers can `.exists()`-check it.
+    """
+    env = os.getenv("WHISPER_PROJECTS_DIR")
+    if env:
+        return Path(env).expanduser()
+    for candidate in (Path.home() / "Documents" / "projects",
+                      Path.home() / "projects"):
+        if candidate.exists():
+            return candidate
+    return Path.home() / "Documents" / "projects"
+
+
 def _known_projects() -> set[str]:
-    """Return set of folder names under ~/Documents/claude_projects/.
+    """Return set of folder names under the projects-scan directory.
     Used as a soft sanity check on extracted project hints — a hint that
     matches a real folder is much more likely to be correct."""
-    base = Path.home() / "Documents" / "claude_projects"
+    base = _projects_dir()
     if not base.exists():
         return set()
     try:
@@ -206,9 +225,9 @@ def _dehyphenate_wraps(text: str) -> str:
 
     Tesseract breaks long lines at column boundaries, sometimes splitting a
     hyphenated identifier across two output lines. On ultrawide displays
-    (3440px), the OpenCode statusline `~/Documents/claude_projects/opencode-
+    (3440px), the OpenCode statusline `~/projects/opencode-
     config:main` becomes:
-        ~/Documents/claude_projects/opencode-
+        ~/projects/opencode-
         Orchestrator … medium config:main
 
     This turns the gold-standard CWD signal (_CWD_RE, score=10) into noise
@@ -263,7 +282,7 @@ def _try_regex(text: str) -> tuple[str, int] | None:
     the project isn't (yet) in the known-folder set.
 
     Weights:
-      cwd indicator (claude_projects path):  10  (gold — explicit working directory)
+      cwd indicator (projects path):         10  (gold — explicit working directory)
       tab branch suffix (`foo:main`):         7  (silver — terminal tab title)
       tab cmd-N hint (`foo ⌘7`):              5  (bronze — iTerm tab list)
       deep generic path:                      3  (last resort)
@@ -411,7 +430,7 @@ _VISION_PROMPT = (
     "STRUCTURAL SIGNALS (in priority order — only these count):\n"
     "  1. IDE / editor statusline showing the workspace folder + git branch "
     "     (OpenCode, VS Code, Cursor — usually bottom of the window). "
-    "     Example: `~/Documents/claude_projects/whisper:main` → `whisper`.\n"
+    "     Example: `~/Documents/projects/myapp:main` → `myapp`.\n"
     "  2. Terminal tab title with cwd path or `name:branch` "
     "     (iTerm2, Ghostty, Terminal.app — usually top of terminal window). "
     "     Example: `whisper ⌘7` (active tab) → `whisper`.\n"
@@ -423,15 +442,15 @@ _VISION_PROMPT = (
     "  - File names, function names, variable names visible in code.\n"
     "  - Words appearing in chat messages, terminal output, or document body.\n"
     "  - Document titles in word processors / wikis (e.g. 'IMG macro-config guide').\n"
-    "  - Container folder names: claude_projects, claude-projects, github, "
-    "    GitHub, src, bin, lib, Documents, Downloads, Desktop, Users, "
+    "  - Container folder names: projects, ai_projects, claude_projects, "
+    "    github, GitHub, src, bin, lib, Documents, Downloads, Desktop, Users, "
     "    Library, Applications, node_modules, dist, build.\n"
     "  - Branch names: main, master, develop, HEAD.\n"
     "  - Generic UI words: Editor, Terminal, Menu, File, Edit, View, Window.\n"
     "\n"
     "Always return the DEEPEST path component of the active workspace. "
-    "Example: path `~/Documents/claude_projects/cursor-config` → "
-    "return `cursor-config`, NOT `claude_projects`.\n"
+    "Example: path `~/projects/cursor-config` → "
+    "return `cursor-config`, NOT `projects`.\n"
     "\n"
     "Output STRICT JSON (no prose, no markdown fence) with these keys:\n"
     "  project        — the project identifier (lowercase, hyphens/underscores ok), "
@@ -724,12 +743,12 @@ def _validate_llm_project(
     layer. Applied to BOTH regex and LLM sources (F-04, QC cycle 1).
 
     Rule 5 (added cycle-2 / F2-05): allow gold-standard `_CWD_RE` matches
-    (weight=10, explicit claude_projects path) through even when the project
+    (weight=10, explicit projects path) through even when the project
     folder hasn't been scanned yet (e.g. newly created project). Avoids
     strict known-folder matching silently discarding legit new projects.
 
     Rule 6 (added after sweep #1): prevents suffix-pollution like
-    'Migros_CCC_to_2.3.7.11_upgrade-1.4.10' (real folder exists without the
+    'customer-x_upgrade_2.3.7.11-1.4.10' (real folder exists without the
     '-1.4.10' pip-version tail bleeding in from another screenshot region).
     """
     if not project:
@@ -756,8 +775,7 @@ def _validate_llm_project(
     if source_score >= 10 and _STRICT_PROJECT_SHAPE.match(project):
         if project not in known:
             try:
-                from pathlib import Path as _P
-                fs_path = _P.home() / "Documents" / "claude_projects" / project
+                fs_path = _projects_dir() / project
                 if fs_path.is_dir():
                     return True, f"ok (gold CWD match, fs-verified new folder; score={source_score})"
             except OSError:
@@ -915,7 +933,7 @@ def main() -> int:
 
         known = label_audit.load_known_projects()
         if not known:
-            log("vision-first: no known projects under ~/Documents/claude_projects/")
+            log(f"vision-first: no known projects under {_projects_dir()}")
             return 0
 
         chat_url = label_audit._get_copilot_chat_url()
